@@ -79,64 +79,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          VERSION=${{ steps.version.outputs.release }}
           ARM64_SHA=$(shasum -a 256 dist/wakuwi-darwin-arm64 | awk '{print $1}')
           AMD64_SHA=$(shasum -a 256 dist/wakuwi-darwin-amd64 | awk '{print $1}')
-
-          FORMULA=$(cat << HEREDOC
-class Wakuwi < Formula
-  desc "Lightweight, read-only Kubernetes UI"
-  homepage "https://github.com/stut/wakuwi"
-  version "$VERSION"
-  license "MIT"
-
-  on_macos do
-    on_arm do
-      url "https://github.com/stut/wakuwi/releases/download/v#{version}/wakuwi-darwin-arm64"
-      sha256 "$ARM64_SHA"
-    end
-    on_intel do
-      url "https://github.com/stut/wakuwi/releases/download/v#{version}/wakuwi-darwin-amd64"
-      sha256 "$AMD64_SHA"
-    end
-  end
-
-  def install
-    bin.install Dir["wakuwi-darwin-*"].first => "wakuwi"
-  end
-
-  service do
-    run [opt_bin/"wakuwi"]
-    keep_alive true
-    log_path var/"log/wakuwi.log"
-    error_log_path var/"log/wakuwi.log"
-  end
-
-  def caveats
-    <<~EOS
-      To start wakuwi as a background service:
-        brew services start stut/tools/wakuwi
-
-      Or run it manually:
-        wakuwi
-
-      Then open http://localhost:9753 in your browser.
-    EOS
-  end
-
-  test do
-    assert_match version.to_s, shell_output("#{bin}/wakuwi --version 2>&1", 1)
-  end
-end
-HEREDOC
-)
-
-          FILE_SHA=$(gh api repos/stut/homebrew-tools/contents/Formula/wakuwi.rb --jq '.sha')
-          CONTENT=$(echo "$FORMULA" | base64 -w 0)
-
-          gh api \
-            --method PUT \
-            repos/stut/homebrew-tools/contents/Formula/wakuwi.rb \
-            --field message="chore: update wakuwi to v$VERSION" \
-            --field "sha=$FILE_SHA" \
-            --field "content=$CONTENT"
+          python3 .github/scripts/update_tap.py \
+            "${{ steps.version.outputs.release }}" \
+            "$ARM64_SHA" \
+            "$AMD64_SHA"
