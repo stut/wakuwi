@@ -1,12 +1,9 @@
 <div align="center">
-  <svg width="80" height="80" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M7 12L20 52L32 24L44 52L57 12" stroke="#0F766E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="32" cy="24" r="4.5" fill="#F97360"/>
-  </svg>
+  <img src="logo.svg" width="80" height="80" alt="wakuwi logo" />
   <h1>wakuwi</h1>
 </div>
 
-A lightweight, read-only Kubernetes UI that runs locally and serves a web interface for exploring your clusters.
+A lightweight, read-only Kubernetes UI that runs locally and serves a web interface for exploring your clusters. Uses your existing kubeconfig — no additional configuration required.
 
 ## Features
 
