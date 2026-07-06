@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"os"
 	"sort"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -40,4 +41,25 @@ func Contexts() ([]Context, error) {
 	})
 
 	return contexts, nil
+}
+
+// HasKubeconfig reports whether any kubeconfig file was found on disk using the
+// same default precedence (KUBECONFIG env, ~/.kube/config) that Contexts uses.
+// This lets callers distinguish "no kubeconfig at all" from "kubeconfig present
+// but defines no contexts".
+func HasKubeconfig() bool {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	paths := rules.Precedence
+	if rules.ExplicitPath != "" {
+		paths = append([]string{rules.ExplicitPath}, paths...)
+	}
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+			return true
+		}
+	}
+	return false
 }

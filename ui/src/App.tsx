@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Info } from "lucide-react"
 import { TopBar } from "@/components/layout/TopBar"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { PodList } from "@/components/PodList"
@@ -43,6 +43,7 @@ export default function App() {
   const [contexts, setContexts] = useState<KubeContext[]>([])
   const [contextsLoading, setContextsLoading] = useState(true)
   const [contextsError, setContextsError] = useState<string | null>(null)
+  const [contextsReason, setContextsReason] = useState<string | null>(null)
   const [namespaces, setNamespaces] = useState<string[]>([])
   const [namespacesLoading, setNamespacesLoading] = useState(false)
   const [namespacesError, setNamespacesError] = useState<string | null>(null)
@@ -118,8 +119,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    fetchJSON<KubeContext[]>("/api/contexts")
-      .then((data) => { setContexts(data); setContextsLoading(false) })
+    fetchJSON<{ contexts: KubeContext[]; reason?: string }>("/api/contexts")
+      .then((data) => {
+        setContexts(data?.contexts ?? [])
+        setContextsReason(data?.reason ?? null)
+        setContextsLoading(false)
+      })
       .catch((e: Error) => { setContextsError(e.message); setContextsLoading(false) })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -185,21 +190,47 @@ export default function App() {
           <LogoIcon size={80} />
           <span className="text-3xl font-semibold tracking-tight" style={{ color: "#0F766E", letterSpacing: "-0.02em" }}>wakuwi</span>
         </div>
-        <h1 className="text-sm text-muted-foreground">Select a context</h1>
-        <div className="w-full max-w-sm flex flex-col gap-2">
-          {contexts.map((c) => (
-            <button
-              key={c.name}
-              onClick={() => navigate(`/${enc(c.name)}`)}
-              className="flex items-center justify-between rounded-lg border bg-card shadow-sm px-4 py-3 text-sm hover:bg-accent/10 transition-colors"
-            >
-              <div className="text-center w-full">
-                <div className="font-medium">{c.cluster}</div>
-                <div className="text-xs text-muted-foreground font-mono">{c.name}</div>
-              </div>
-            </button>
-          ))}
-        </div>
+        {contexts.length === 0 ? (
+          <div className="w-full max-w-md flex flex-col items-center gap-2 rounded-lg border bg-card shadow-sm px-6 py-5 text-center">
+            <Info className="h-5 w-5 text-muted-foreground" />
+            {contextsReason === "no-kubeconfig" ? (
+              <>
+                <p className="text-sm font-medium">No kubeconfig found</p>
+                <p className="text-xs text-muted-foreground">
+                  wakuwi couldn't find a kubeconfig file. Set the{" "}
+                  <code className="font-mono">KUBECONFIG</code> environment variable or
+                  create <code className="font-mono">~/.kube/config</code>, then reload.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium">No contexts available</p>
+                <p className="text-xs text-muted-foreground">
+                  Your kubeconfig doesn't define any contexts. Add one with{" "}
+                  <code className="font-mono">kubectl config set-context</code>, then reload.
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            <h1 className="text-sm text-muted-foreground">Select a context</h1>
+            <div className="w-full max-w-sm flex flex-col gap-2">
+              {contexts.map((c) => (
+                <button
+                  key={c.name}
+                  onClick={() => navigate(`/${enc(c.name)}`)}
+                  className="flex items-center justify-between rounded-lg border bg-card shadow-sm px-4 py-3 text-sm hover:bg-accent/10 transition-colors"
+                >
+                  <div className="text-center w-full">
+                    <div className="font-medium">{c.cluster}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{c.name}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     )
   }
