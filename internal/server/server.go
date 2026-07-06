@@ -98,8 +98,23 @@ func (s *Server) handleContexts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Reason lets the UI surface an informational notice (not an error) when
+	// there is nothing to select: either no kubeconfig exists at all, or a
+	// kubeconfig is present but defines no contexts.
+	resp := struct {
+		Contexts []kube.Context `json:"contexts"`
+		Reason   string         `json:"reason,omitempty"`
+	}{Contexts: contexts}
+	if len(contexts) == 0 {
+		if kube.HasKubeconfig() {
+			resp.Reason = "no-contexts"
+		} else {
+			resp.Reason = "no-kubeconfig"
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(contexts) //nolint:errcheck
+	json.NewEncoder(w).Encode(resp) //nolint:errcheck
 }
 
 func (s *Server) handleNamespaces(w http.ResponseWriter, r *http.Request) {
