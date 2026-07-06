@@ -16,12 +16,17 @@ A lightweight, read-only Kubernetes UI that runs locally and serves a web interf
 - Detect and surface common resource issues
 - Manage and inspect locally-running processes
 
-## Requirements
+## Installation
 
-- Go 1.22+
-- Node.js (for building the UI)
+### Homebrew (macOS)
 
-## Build
+```sh
+brew install stut/tools/wakuwi
+```
+
+### Build from source
+
+Requirements: Go 1.22+, Node.js
 
 ```sh
 make build        # builds UI then compiles the binary to ./wakuwi
@@ -30,17 +35,11 @@ make build        # builds UI then compiles the binary to ./wakuwi
 ## Run
 
 ```sh
-make run          # builds UI and runs in one step
+wakuwi                  # listens on :8080
+wakuwi --port 9090      # custom port
 ```
 
-Or after building:
-
-```sh
-./wakuwi                  # listens on :8080
-./wakuwi --port 9090      # custom port
-```
-
-Open [http://localhost:8080](http://localhost:8080) in your browser.
+Open [http://localhost:9753](http://localhost:9753) in your browser.
 
 The UI is embedded in the binary — no separate assets needed at runtime.
 

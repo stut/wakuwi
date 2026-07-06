@@ -22,7 +22,7 @@ import (
 var version = "dev"
 
 func main() {
-	port := flag.Int("port", 8080, "port to listen on")
+	port := flag.Int("port", 9753, "port to listen on")
 	flag.Parse()
 
 	addr := fmt.Sprintf(":%d", *port)
