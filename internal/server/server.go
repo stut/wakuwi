@@ -18,21 +18,23 @@ import (
 )
 
 type Server struct {
-	mux    *http.ServeMux
-	static fs.FS
-	pm     *process.Manager
+	mux     *http.ServeMux
+	static  fs.FS
+	pm      *process.Manager
+	version string
 }
 
-func New(files fs.FS, pm *process.Manager) *Server {
+func New(files fs.FS, pm *process.Manager, version string) *Server {
 	static, err := fs.Sub(files, "ui/dist")
 	if err != nil {
 		panic(err)
 	}
 
 	s := &Server{
-		mux:    http.NewServeMux(),
-		static: static,
-		pm:     pm,
+		mux:     http.NewServeMux(),
+		static:  static,
+		pm:      pm,
+		version: version,
 	}
 	s.routes()
 	return s
@@ -62,6 +64,7 @@ func (r *statusRecorder) Flush() {
 }
 
 func (s *Server) routes() {
+	s.mux.HandleFunc("/api/version", s.handleVersion)
 	s.mux.HandleFunc("/api/contexts", s.handleContexts)
 	s.mux.HandleFunc("/api/namespaces", s.handleNamespaces)
 	s.mux.HandleFunc("/api/pods", s.handlePodList)
@@ -76,6 +79,11 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/api/processes", s.handleProcesses)
 	s.mux.HandleFunc("/api/processes/", s.handleProcess)
 	s.mux.Handle("/", s.spaHandler())
+}
+
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"version": s.version})
 }
 
 func (s *Server) handleContexts(w http.ResponseWriter, r *http.Request) {

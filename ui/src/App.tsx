@@ -49,6 +49,7 @@ export default function App() {
   const [processCount, setProcessCount] = useState(0)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [switchingContext, setSwitchingContext] = useState(false)
+  const [appVersion, setAppVersion] = useState<string>("")
 
   useEffect(() => {
     setErrorNotifier((msg) => {
@@ -109,6 +110,12 @@ export default function App() {
 
   useEffect(() => { refreshProcessCount() }, [refreshProcessCount])
   useAutoRefresh(refreshProcessCount, 5000)
+
+  useEffect(() => {
+    fetchJSON<{ version: string }>("/api/version")
+      .then((data) => setAppVersion(data?.version ?? ""))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetchJSON<KubeContext[]>("/api/contexts")
@@ -209,7 +216,7 @@ export default function App() {
         onIssuesClick={() => context ? navigate(`/${enc(context)}/_/issues`) : undefined}
         onProcessesClick={() => navigate("/_/processes")}
       />
-      {urlNamespace && (
+      {urlNamespace ? (
         <Sidebar
           context={urlContext}
           namespaces={namespaces}
@@ -220,8 +227,13 @@ export default function App() {
           selectedResource={urlResource}
           onResourceSelect={toResource}
           onSearch={() => navigate(`/${enc(urlContext!)}/${enc(urlNamespace!)}`)}
+          version={appVersion}
         />
-      )}
+      ) : appVersion ? (
+        <div className="fixed bottom-0 left-0 right-0 flex justify-end px-4 py-1.5 text-xs text-muted-foreground/50 pointer-events-none">
+          v{appVersion}
+        </div>
+      ) : null}
       <ErrorToast toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
       {switchingContext && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">

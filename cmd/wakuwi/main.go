@@ -19,6 +19,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
+var version = "dev"
+
 func main() {
 	port := flag.Int("port", 8080, "port to listen on")
 	flag.Parse()
@@ -46,7 +48,7 @@ func main() {
 	}
 	log.Printf("process manager initialised (log dir: %s/wakuwi)", os.TempDir())
 
-	srv := server.New(wakuwi.StaticFiles, pm)
+	srv := server.New(wakuwi.StaticFiles, pm, version)
 
 	// Bind the socket before starting the probe so the probe only
 	// succeeds when OUR server is listening, not any pre-existing process.

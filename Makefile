@@ -1,14 +1,17 @@
+VERSION := $(shell cat VERSION)
+LDFLAGS := -X main.version=$(VERSION)
+
 .PHONY: build ui dev-ui run clean
 
 build: ui
-	go build -o wakuwi ./cmd/wakuwi
+	go build -ldflags "$(LDFLAGS)" -o wakuwi ./cmd/wakuwi
 
 ui:
 	npm --prefix ui install
 	npm --prefix ui run build
 
 run: ui
-	go run ./cmd/wakuwi
+	go run -ldflags "$(LDFLAGS)" ./cmd/wakuwi
 
 dev-ui:
 	npm --prefix ui run dev
