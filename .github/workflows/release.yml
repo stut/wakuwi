@@ -1,12 +1,18 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump for the next dev cycle'
+        type: choice
+        default: minor
+        options:
+          - minor
+          - major
 
 jobs:
   release:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -29,10 +35,16 @@ jobs:
         id: version
         run: |
           DEV_VERSION=$(cat VERSION)
-          RELEASE_VERSION="${DEV_VERSION%-dev}"
-          MAJOR=$(echo $RELEASE_VERSION | cut -d. -f1)
-          MINOR=$(echo $RELEASE_VERSION | cut -d. -f2)
-          NEXT_VERSION="$MAJOR.$((MINOR + 1)).0-dev"
+          PENDING_VERSION="${DEV_VERSION%-dev}"
+          MAJOR=$(echo $PENDING_VERSION | cut -d. -f1)
+          MINOR=$(echo $PENDING_VERSION | cut -d. -f2)
+          if [ "${{ inputs.bump }}" = "major" ]; then
+            RELEASE_VERSION="$((MAJOR + 1)).0.0"
+            NEXT_VERSION="$((MAJOR + 1)).1.0-dev"
+          else
+            RELEASE_VERSION="$MAJOR.$MINOR.0"
+            NEXT_VERSION="$MAJOR.$((MINOR + 1)).0-dev"
+          fi
           echo "$RELEASE_VERSION" > VERSION
           echo "release=$RELEASE_VERSION" >> $GITHUB_OUTPUT
           echo "next=$NEXT_VERSION" >> $GITHUB_OUTPUT
