@@ -135,7 +135,7 @@ export default function App() {
     ...(processId ? [{ label: processId }] : []),
   ] : [
     { label: "wakuwi", onClick: () => navigate("/") },
-    ...(urlContext ? [{ label: clusterName, onClick: (urlNamespace || urlResource === "issues") ? () => toContext(urlContext) : undefined }] : []),
+    ...(urlContext ? [{ label: clusterName, onClick: (urlNamespace || urlResource === "issues") ? () => navigate(`/${enc(urlContext)}`) : undefined }] : []),
     ...(!urlNamespace && urlResource === "issues" ? [{ label: "Issues" }] : []),
     ...(urlNamespace ? [{ label: urlNamespace, onClick: urlResource ? () => navigate(`/${enc(urlContext!)}/${enc(urlNamespace)}`) : undefined }] : []),
     ...(urlResource && urlNamespace ? [{
