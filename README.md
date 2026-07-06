@@ -56,7 +56,7 @@ go run ./cmd/wakuwi
 make dev-ui
 ```
 
-## Credits
+## Why Another KUbernetes Web Interface?
 
 [Stut](https://stut.me/) was bored. [Claude](https://claude.ai) was also there.
 
