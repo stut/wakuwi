@@ -11,12 +11,13 @@ interface Props {
   selectedContext: string | null
   onContextSelect: (name: string) => void
   processCount: number
+  showProcesses: boolean
   onProcessesClick: () => void
   onIssuesClick: () => void
   onSearchClick: () => void
 }
 
-export function TopBar({ breadcrumb, contexts, selectedContext, onContextSelect, processCount, onProcessesClick, onIssuesClick, onSearchClick }: Props) {
+export function TopBar({ breadcrumb, contexts, selectedContext, onContextSelect, processCount, showProcesses, onProcessesClick, onIssuesClick, onSearchClick }: Props) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4 gap-4 shadow-sm">
       <div className="flex items-center gap-3 min-w-0">
@@ -32,15 +33,17 @@ export function TopBar({ breadcrumb, contexts, selectedContext, onContextSelect,
           <AlertTriangle className="mr-2 h-4 w-4" />
           Issues
         </Button>
-        <Button variant="outline" size="sm" onClick={onProcessesClick}>
-          <Activity className="mr-2 h-4 w-4" />
-          Processes
-          {processCount > 0 && (
-            <span className="ml-2 rounded-full bg-primary text-primary-foreground text-xs px-1.5 py-0.5 leading-none">
-              {processCount}
-            </span>
-          )}
-        </Button>
+        {showProcesses && (
+          <Button variant="outline" size="sm" onClick={onProcessesClick}>
+            <Activity className="mr-2 h-4 w-4" />
+            Processes
+            {processCount > 0 && (
+              <span className="ml-2 rounded-full bg-primary text-primary-foreground text-xs px-1.5 py-0.5 leading-none">
+                {processCount}
+              </span>
+            )}
+          </Button>
+        )}
         <ContextSelector
           contexts={contexts}
           selected={selectedContext}

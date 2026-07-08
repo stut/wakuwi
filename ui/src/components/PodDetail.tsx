@@ -23,6 +23,7 @@ interface Props {
   context: string
   namespace: string
   name: string
+  showPortForward: boolean
   onNavigate: (path: string) => void
 }
 
@@ -39,7 +40,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString()
 }
 
-export function PodDetail({ context, namespace, name, onNavigate }: Props) {
+export function PodDetail({ context, namespace, name, showPortForward, onNavigate }: Props) {
   const [pod, setPod] = useState<PodDetailType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -71,12 +72,14 @@ export function PodDetail({ context, namespace, name, onNavigate }: Props) {
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-xl font-semibold">{name}</h1>
           <div className="flex items-center gap-2 shrink-0">
-        <Button variant="outline" size="sm" onClick={() => {
-          const firstPort = pod.containers.flatMap(c => c.ports ?? []).find(Boolean)
-          setPfDialog({ port: firstPort?.containerPort ?? 8080 })
-        }}>
-          <ArrowLeftRight className="mr-2 h-4 w-4" />Port Forward
-        </Button>
+        {showPortForward && (
+          <Button variant="outline" size="sm" onClick={() => {
+            const firstPort = pod.containers.flatMap(c => c.ports ?? []).find(Boolean)
+            setPfDialog({ port: firstPort?.containerPort ?? 8080 })
+          }}>
+            <ArrowLeftRight className="mr-2 h-4 w-4" />Port Forward
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={() => onNavigate(`/${encodeURIComponent(context)}/${encodeURIComponent(namespace)}/pods/${encodeURIComponent(name)}/logs`)}>
           <FileText className="mr-2 h-4 w-4" />Logs
         </Button>

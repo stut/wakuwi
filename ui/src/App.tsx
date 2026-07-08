@@ -21,7 +21,7 @@ import { useAutoRefresh } from "@/lib/useAutoRefresh"
 import { RESOURCE_LABELS } from "@/lib/resources"
 import { LogoIcon } from "@/components/Logo"
 import type { BreadcrumbItem } from "@/components/Breadcrumb"
-import type { KubeContext, Process } from "@/types"
+import type { Capabilities, KubeContext, Process } from "@/types"
 
 const enc = encodeURIComponent
 const dec = decodeURIComponent
@@ -51,6 +51,7 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [switchingContext, setSwitchingContext] = useState(false)
   const [appVersion, setAppVersion] = useState<string>("")
+  const [capabilities, setCapabilities] = useState<Capabilities>({ inCluster: false, processes: false, secrets: false })
 
   useEffect(() => {
     setErrorNotifier((msg) => {
@@ -104,17 +105,21 @@ export default function App() {
   const toDetail = (n: string) => navigate(`/${enc(context!)}/${enc(namespace!)}/${enc(resource!)}/${enc(n)}`)
 
   const refreshProcessCount = useCallback(() => {
+    if (!capabilities.processes) return
     fetchJSON<Process[]>("/api/processes")
       .then((data) => setProcessCount((data ?? []).filter(p => p.status === "running").length))
       .catch(() => {})
-  }, [])
+  }, [capabilities.processes])
 
   useEffect(() => { refreshProcessCount() }, [refreshProcessCount])
   useAutoRefresh(refreshProcessCount, 5000)
 
   useEffect(() => {
-    fetchJSON<{ version: string }>("/api/version")
-      .then((data) => setAppVersion(data?.version ?? ""))
+    fetchJSON<{ version: string; capabilities?: Capabilities }>("/api/version")
+      .then((data) => {
+        setAppVersion(data?.version ?? "")
+        if (data?.capabilities) setCapabilities(data.capabilities)
+      })
       .catch(() => {})
   }, [])
 
@@ -243,6 +248,7 @@ export default function App() {
         selectedContext={context}
         onContextSelect={toContext}
         processCount={processCount}
+        showProcesses={capabilities.processes}
         onSearchClick={() => context ? navigate(`/${enc(context)}`) : undefined}
         onIssuesClick={() => context ? navigate(`/${enc(context)}/_/issues`) : undefined}
         onProcessesClick={() => navigate("/_/processes")}
@@ -258,6 +264,7 @@ export default function App() {
           selectedResource={urlResource}
           onResourceSelect={toResource}
           onSearch={() => navigate(`/${enc(urlContext!)}/${enc(urlNamespace!)}`)}
+          showSecrets={capabilities.secrets}
           version={appVersion}
         />
       ) : appVersion ? (
@@ -282,9 +289,9 @@ export default function App() {
         ) : !urlNamespace && urlResource === "issues" ? (
           <Issues context={urlContext!} onNavigate={navigate} />
         ) : !urlResource && !urlNamespace ? (
-          <Search context={urlContext!} namespaces={namespaces} namespacesLoading={namespacesLoading} onNavigate={navigate} />
+          <Search context={urlContext!} namespaces={namespaces} namespacesLoading={namespacesLoading} showSecrets={capabilities.secrets} onNavigate={navigate} />
         ) : !urlResource ? (
-          <Search context={urlContext!} namespace={urlNamespace!} namespaces={[]} namespacesLoading={false} onNavigate={navigate} />
+          <Search context={urlContext!} namespace={urlNamespace!} namespaces={[]} namespacesLoading={false} showSecrets={capabilities.secrets} onNavigate={navigate} />
         ) : urlPodName && urlSubView === "manifest" ? (
           <ManifestView
             context={urlContext!}
@@ -302,7 +309,7 @@ export default function App() {
           />
         ) : urlPodName ? (
           urlResource === "pods"
-            ? <PodDetail context={urlContext!} namespace={urlNamespace!} name={urlPodName} onNavigate={navigate} />
+            ? <PodDetail context={urlContext!} namespace={urlNamespace!} name={urlPodName} showPortForward={capabilities.processes} onNavigate={navigate} />
             : <ResourceDetail kind={urlResource!} context={urlContext!} namespace={urlNamespace!} name={urlPodName} onNavigate={navigate} />
         ) : urlResource === "pods" ? (
           <PodList context={urlContext!} namespace={urlNamespace!} onPodSelect={toDetail} />

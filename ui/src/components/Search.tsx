@@ -23,10 +23,11 @@ interface Props {
   namespace?: string
   namespaces: string[]
   namespacesLoading: boolean
+  showSecrets: boolean
   onNavigate: (path: string) => void
 }
 
-export function Search({ context, namespace, namespaces, namespacesLoading, onNavigate }: Props) {
+export function Search({ context, namespace, namespaces, namespacesLoading, showSecrets, onNavigate }: Props) {
   const [query, setQuery] = useState("")
   const [nsFilter, setNsFilter] = useState("")
   const [kinds, setKinds] = useState<string[]>(loadKinds)
@@ -42,7 +43,10 @@ export function Search({ context, namespace, namespaces, namespacesLoading, onNa
     })
   }
 
+  const availableKinds = ALL_KINDS.filter((k) => showSecrets || k !== "secrets")
+
   const runSearch = (q: string, k: string[]) => {
+    k = k.filter((kind) => availableKinds.includes(kind))
     if (!q.trim() || k.length === 0) { setResults(null); return }
     setLoading(true)
     fetchJSON<SearchResult[]>(
@@ -85,7 +89,7 @@ export function Search({ context, namespace, namespaces, namespacesLoading, onNa
 
         {/* kind toggles */}
         <div className="text-center text-balance mb-6">
-          {ALL_KINDS.map((k) => (
+          {availableKinds.map((k) => (
             <button
               key={k}
               onClick={() => toggleKind(k)}
