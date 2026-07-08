@@ -45,6 +45,7 @@ export default function App() {
   const [contextsError, setContextsError] = useState<string | null>(null)
   const [contextsReason, setContextsReason] = useState<string | null>(null)
   const [namespaces, setNamespaces] = useState<string[]>([])
+  const [namespacesContext, setNamespacesContext] = useState<string | null>(null)
   const [namespacesLoading, setNamespacesLoading] = useState(false)
   const [namespacesError, setNamespacesError] = useState<string | null>(null)
   const [processCount, setProcessCount] = useState(0)
@@ -133,11 +134,27 @@ export default function App() {
     setNamespacesLoading(true)
     setNamespacesError(null)
     setNamespaces([])
+    setNamespacesContext(urlContext)
     fetchJSON<string[]>(`/api/namespaces?context=${enc(urlContext)}`)
       .then(setNamespaces)
       .catch((e: Error) => setNamespacesError(e.message))
       .finally(() => setNamespacesLoading(false))
   }, [urlContext])
+
+  // Auto-redirect past pages that offer only a single choice
+  const redirectingToOnlyContext = path === "/" && !contextsLoading && !contextsError && contexts.length === 1
+  useEffect(() => {
+    if (redirectingToOnlyContext) navigate(`/${enc(contexts[0].name)}`, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [redirectingToOnlyContext])
+
+  const onContextHome = !!urlContext && !urlNamespace && !urlResource
+  useEffect(() => {
+    if (onContextHome && namespacesContext === urlContext && !namespacesLoading && !namespacesError && namespaces.length === 1) {
+      navigate(`/${enc(urlContext!)}/${enc(namespaces[0])}`, { replace: true })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onContextHome, namespacesLoading, namespacesError, namespaces, namespacesContext, urlContext])
 
   const clusterName = contexts.find((c) => c.name === urlContext)?.cluster ?? urlContext ?? ""
 
@@ -167,7 +184,7 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, clusterName])
 
-  if (contextsLoading) {
+  if (contextsLoading || redirectingToOnlyContext) {
     return (
       <div className="flex h-screen items-center justify-center text-muted-foreground text-sm">
         Connecting…
