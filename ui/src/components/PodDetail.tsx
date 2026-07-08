@@ -27,11 +27,11 @@ interface Props {
 }
 
 function statusClass(status: string): string {
-  if (status === "Running") return "text-green-600"
+  if (status === "Running") return "text-green-600 dark:text-green-500"
   if (status === "Pending") return "text-yellow-500"
   if (status === "Terminating") return "text-orange-500"
   if (status === "Succeeded") return "text-blue-500"
-  return "text-red-600"
+  return "text-red-600 dark:text-red-500"
 }
 
 function formatDate(iso: string): string {
@@ -167,7 +167,7 @@ export function PodDetail({ context, namespace, name, onNavigate }: Props) {
               <tbody>
                 {pod.events.map((ev, i) => (
                   <tr key={i} className="border-b">
-                    <td className={cn("py-1.5 pr-4 font-medium", ev.type === "Warning" ? "text-orange-500" : "text-green-600")}>{ev.type}</td>
+                    <td className={cn("py-1.5 pr-4 font-medium", ev.type === "Warning" ? "text-orange-500" : "text-green-600 dark:text-green-500")}>{ev.type}</td>
                     <td className="py-1.5 pr-4">{ev.reason}</td>
                     <td className="py-1.5 pr-4 text-muted-foreground">{ev.age}{ev.count > 1 ? ` ×${ev.count}` : ""}</td>
                     <td className="py-1.5 pr-4 font-mono text-muted-foreground">{ev.from}</td>

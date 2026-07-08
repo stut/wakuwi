@@ -2,16 +2,26 @@
 <html lang="en">
   <head>
     <script>if('serviceWorker'in navigator)navigator.serviceWorker.getRegistrations().then(r=>r.forEach(s=>s.unregister()))</script>
+    <script>try{var t=JSON.parse(localStorage.getItem('wakuwi.theme'));if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.classList.add('dark')}</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>wakuwi</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 64 64' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M7 12L20 52L32 24L44 52L57 12' stroke='%230F766E' stroke-width='5.5' stroke-linecap='round' stroke-linejoin='round'/><circle cx='32' cy='24' r='4.5' fill='%23F97360'/></svg>" />
   </head>
   <body>
+    <style>
+      #root .skel-top{position:fixed;top:0;left:0;right:0;height:56px;border-bottom:1px solid #e5e5e5;background:#fff;display:flex;align-items:center;padding:0 16px;font-family:system-ui,sans-serif;font-size:14px;font-weight:600;color:#0f172a}
+      #root .skel-side{position:fixed;top:56px;left:0;bottom:0;width:224px;border-right:1px solid #e5e5e5;background:#f8fafc}
+      #root .skel-main{margin-left:224px;margin-top:56px;padding:24px;display:flex;align-items:center;justify-content:center;height:calc(100vh - 56px);font-family:system-ui,sans-serif;font-size:14px;color:#888}
+      .dark body{background:#0f1729}
+      .dark #root .skel-top{border-bottom-color:#1e293b;background:#0f1729;color:#f1f5f9}
+      .dark #root .skel-side{border-right-color:#1e293b;background:#131c31}
+      .dark #root .skel-main{color:#64748b}
+    </style>
     <div id="root">
-      <div style="position:fixed;top:0;left:0;right:0;height:56px;border-bottom:1px solid #e5e5e5;background:#fff;display:flex;align-items:center;padding:0 16px;font-family:system-ui,sans-serif;font-size:14px;font-weight:600;color:#0f172a">wakuwi</div>
-      <div style="position:fixed;top:56px;left:0;bottom:0;width:224px;border-right:1px solid #e5e5e5;background:#f8fafc"></div>
-      <div style="margin-left:224px;margin-top:56px;padding:24px;display:flex;align-items:center;justify-content:center;height:calc(100vh - 56px);font-family:system-ui,sans-serif;font-size:14px;color:#888">Connecting…</div>
+      <div class="skel-top">wakuwi</div>
+      <div class="skel-side"></div>
+      <div class="skel-main">Connecting…</div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
