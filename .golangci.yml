@@ -1,0 +1,14 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      # Errors from these are deliberately ignored: nothing actionable can
+      # be done about a failed Close on a read stream or a failed write to
+      # an already-connected SSE client.
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
