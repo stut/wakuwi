@@ -34,6 +34,7 @@ type Server struct {
 	static  fs.FS
 	pm      *process.Manager
 	version string
+	updates *updateChecker
 	opts    Options
 }
 
@@ -48,6 +49,7 @@ func New(files fs.FS, pm *process.Manager, version string, opts Options) *Server
 		static:  static,
 		pm:      pm,
 		version: version,
+		updates: newUpdateChecker(version),
 		opts:    opts,
 	}
 	s.routes()
@@ -122,9 +124,11 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct { //nolint:errcheck
 		Version      string       `json:"version"`
+		Latest       *Release     `json:"latest,omitempty"`
 		Capabilities Capabilities `json:"capabilities"`
 	}{
 		Version: s.version,
+		Latest:  s.updates.Latest(),
 		Capabilities: Capabilities{
 			InCluster: s.opts.InCluster,
 			Processes: s.processesEnabled(),

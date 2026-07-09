@@ -40,6 +40,7 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [switchingContext, setSwitchingContext] = useState(false)
   const [appVersion, setAppVersion] = useState<string>("")
+  const [latestRelease, setLatestRelease] = useState<{ version: string; url: string } | null>(null)
   const [capabilities, setCapabilities] = useState<Capabilities>({ inCluster: false, processes: false, secrets: false })
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(true)
   const [processModal, setProcessModal] = useState<{ id: string | null } | null>(null)
@@ -117,9 +118,10 @@ export default function App() {
   useAutoRefresh(refreshProcessCount, 5000)
 
   useEffect(() => {
-    fetchJSON<{ version: string; capabilities?: Capabilities }>("/api/version")
+    fetchJSON<{ version: string; latest?: { version: string; url: string }; capabilities?: Capabilities }>("/api/version")
       .then((data) => {
         setAppVersion(data?.version ?? "")
+        setLatestRelease(data?.latest ?? null)
         if (data?.capabilities) setCapabilities(data.capabilities)
       })
       .catch(() => {})
@@ -293,6 +295,7 @@ export default function App() {
           onSearch={() => navigate(`/${enc(urlContext!)}/${enc(urlNamespace!)}`)}
           showSecrets={capabilities.secrets}
           version={appVersion}
+          latestRelease={latestRelease}
         />
       ) : appVersion ? (
         <div className="fixed bottom-0 left-0 right-0 flex justify-end px-4 py-1.5 text-xs text-muted-foreground/50 pointer-events-none">

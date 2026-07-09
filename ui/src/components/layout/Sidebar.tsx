@@ -13,6 +13,7 @@ interface Props {
   onSearch: () => void
   showSecrets: boolean
   version?: string
+  latestRelease?: { version: string; url: string } | null
 }
 
 export function Sidebar({
@@ -27,6 +28,7 @@ export function Sidebar({
   onSearch,
   showSecrets,
   version,
+  latestRelease,
 }: Props) {
   return (
     <aside className="fixed bottom-0 left-0 top-14 w-56 flex flex-col border-r bg-muted/20">
@@ -45,6 +47,16 @@ export function Sidebar({
           <ResourceMenu selected={selectedResource} onSelect={onResourceSelect} onSearch={onSearch} showSecrets={showSecrets} />
         </div>
       </div>
+      {latestRelease && (
+        <a
+          href={latestRelease.url}
+          target="_blank"
+          rel="noreferrer"
+          className="py-2 text-xs text-primary border-t text-center hover:underline"
+        >
+          v{latestRelease.version} is available
+        </a>
+      )}
       {version && (
         <div className="py-2 text-xs text-muted-foreground/50 border-t text-center">
           v{version}
