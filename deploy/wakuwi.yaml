@@ -1,0 +1,127 @@
+# In-cluster deployment for wakuwi.
+#
+# wakuwi has NO built-in authentication. This manifest exposes it as a
+# ClusterIP service only — access it with:
+#
+#   kubectl -n wakuwi port-forward svc/wakuwi 9753:9753
+#
+# If you expose it via an Ingress, put an auth layer (e.g. oauth2-proxy)
+# in front of it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wakuwi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wakuwi
+  namespace: wakuwi
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wakuwi-readonly
+rules:
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - configmaps
+      - persistentvolumeclaims
+      - persistentvolumes
+      - events
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  # Secrets are excluded by default. To browse secrets, uncomment this rule
+  # AND start wakuwi with --show-secrets (both layers must be enabled).
+  # - apiGroups: [""]
+  #   resources: ["secrets"]
+  #   verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wakuwi-readonly
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: wakuwi-readonly
+subjects:
+  - kind: ServiceAccount
+    name: wakuwi
+    namespace: wakuwi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wakuwi
+  namespace: wakuwi
+  labels:
+    app: wakuwi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wakuwi
+  template:
+    metadata:
+      labels:
+        app: wakuwi
+    spec:
+      serviceAccountName: wakuwi
+      containers:
+        - name: wakuwi
+          image: ghcr.io/stut/wakuwi:latest
+          args: []
+          # To enable the secrets browser (with the RBAC rule above):
+          # args: ["--show-secrets"]
+          ports:
+            - name: http
+              containerPort: 9753
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wakuwi
+  namespace: wakuwi
+  labels:
+    app: wakuwi
+spec:
+  type: ClusterIP
+  selector:
+    app: wakuwi
+  ports:
+    - name: http
+      port: 9753
+      targetPort: http

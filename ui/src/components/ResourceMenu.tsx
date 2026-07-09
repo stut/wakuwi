@@ -34,9 +34,14 @@ interface Props {
   selected: string | null
   onSelect: (resource: string) => void
   onSearch: () => void
+  showSecrets: boolean
 }
 
-export function ResourceMenu({ selected, onSelect, onSearch }: Props) {
+export function ResourceMenu({ selected, onSelect, onSearch, showSecrets }: Props) {
+  const groups = RESOURCE_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => showSecrets || i.value !== "secrets"),
+  }))
   return (
     <nav className="py-2">
       <button
@@ -50,7 +55,7 @@ export function ResourceMenu({ selected, onSelect, onSearch }: Props) {
       >
         <Search className="h-3.5 w-3.5" />Search
       </button>
-      {RESOURCE_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.label} className="mb-1">
           <p className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
             {group.label}

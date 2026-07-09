@@ -17,14 +17,25 @@ import (
 	"github.com/stut/wakuwi/internal/process"
 )
 
+// Options controls which features the server exposes.
+type Options struct {
+	// InCluster disables features that make no sense inside a pod
+	// (port-forward, local process management).
+	InCluster bool
+	// ShowSecrets exposes the Secret resource kind through the API. Off by
+	// default; RBAC is the real security boundary — this is belt-and-braces.
+	ShowSecrets bool
+}
+
 type Server struct {
 	mux     *http.ServeMux
 	static  fs.FS
 	pm      *process.Manager
 	version string
+	opts    Options
 }
 
-func New(files fs.FS, pm *process.Manager, version string) *Server {
+func New(files fs.FS, pm *process.Manager, version string, opts Options) *Server {
 	static, err := fs.Sub(files, "ui/dist")
 	if err != nil {
 		panic(err)
@@ -35,9 +46,16 @@ func New(files fs.FS, pm *process.Manager, version string) *Server {
 		static:  static,
 		pm:      pm,
 		version: version,
+		opts:    opts,
 	}
 	s.routes()
 	return s
+}
+
+// processesEnabled reports whether the local process manager (port-forward
+// et al) is available: disabled in-cluster and when no manager was supplied.
+func (s *Server) processesEnabled() bool {
+	return !s.opts.InCluster && s.pm != nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +82,7 @@ func (r *statusRecorder) Flush() {
 }
 
 func (s *Server) routes() {
+	s.mux.HandleFunc("/healthz", s.handleHealthz)
 	s.mux.HandleFunc("/api/version", s.handleVersion)
 	s.mux.HandleFunc("/api/contexts", s.handleContexts)
 	s.mux.HandleFunc("/api/namespaces", s.handleNamespaces)
@@ -81,9 +100,31 @@ func (s *Server) routes() {
 	s.mux.Handle("/", s.spaHandler())
 }
 
+func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte("ok")) //nolint:errcheck
+}
+
+// Capabilities tells the UI which features to show.
+type Capabilities struct {
+	InCluster bool `json:"inCluster"`
+	Processes bool `json:"processes"` // port-forward + process manager
+	Secrets   bool `json:"secrets"`
+}
+
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"version": s.version})
+	json.NewEncoder(w).Encode(struct { //nolint:errcheck
+		Version      string       `json:"version"`
+		Capabilities Capabilities `json:"capabilities"`
+	}{
+		Version: s.version,
+		Capabilities: Capabilities{
+			InCluster: s.opts.InCluster,
+			Processes: s.processesEnabled(),
+			Secrets:   s.opts.ShowSecrets,
+		},
+	})
 }
 
 func (s *Server) handleContexts(w http.ResponseWriter, r *http.Request) {
@@ -196,6 +237,10 @@ func (s *Server) handleResourceList(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "context, namespace and kind query params required", http.StatusBadRequest)
 		return
 	}
+	if s.kindHidden(kind) {
+		http.Error(w, "secrets are disabled; start wakuwi with --show-secrets", http.StatusForbidden)
+		return
+	}
 	resources, err := kube.ListResources(r.Context(), contextName, namespace, kind)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -222,6 +267,10 @@ func (s *Server) handleResourceDetail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "context, namespace and kind query params required", http.StatusBadRequest)
 		return
 	}
+	if s.kindHidden(kind) {
+		http.Error(w, "secrets are disabled; start wakuwi with --show-secrets", http.StatusForbidden)
+		return
+	}
 	detail, err := kube.GetResource(r.Context(), contextName, namespace, kind, name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -242,6 +291,10 @@ func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if contextName == "" || namespace == "" || kind == "" || name == "" {
 		http.Error(w, "context, namespace, kind and name required", http.StatusBadRequest)
+		return
+	}
+	if s.kindHidden(kind) {
+		http.Error(w, "secrets are disabled; start wakuwi with --show-secrets", http.StatusForbidden)
 		return
 	}
 	data, err := kube.GetManifest(r.Context(), contextName, namespace, kind, name)
@@ -285,7 +338,17 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "context, q and kinds required", http.StatusBadRequest)
 		return
 	}
-	results, err := kube.Search(r.Context(), contextName, q, strings.Split(kindsParam, ","))
+	kinds := make([]string, 0)
+	for _, k := range strings.Split(kindsParam, ",") {
+		if !s.kindHidden(k) {
+			kinds = append(kinds, k)
+		}
+	}
+	if len(kinds) == 0 {
+		http.Error(w, "no permitted kinds requested", http.StatusForbidden)
+		return
+	}
+	results, err := kube.Search(r.Context(), contextName, q, kinds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -361,7 +424,17 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// kindHidden reports whether a resource kind is filtered from the API.
+// Only secrets are gated, behind the --show-secrets flag.
+func (s *Server) kindHidden(kind string) bool {
+	return kind == "secrets" && !s.opts.ShowSecrets
+}
+
 func (s *Server) handleProcesses(w http.ResponseWriter, r *http.Request) {
+	if !s.processesEnabled() {
+		http.Error(w, "process management is disabled in-cluster", http.StatusNotFound)
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		list := s.pm.List()
@@ -404,6 +477,10 @@ func (s *Server) handleProcesses(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
+	if !s.processesEnabled() {
+		http.Error(w, "process management is disabled in-cluster", http.StatusNotFound)
+		return
+	}
 	// Path: /api/processes/:id or /api/processes/:id/logs or /api/processes/:id/dismiss
 	rest := strings.TrimPrefix(r.URL.Path, "/api/processes/")
 	parts := strings.SplitN(rest, "/", 2)

@@ -7,7 +7,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 )
 
@@ -31,12 +30,7 @@ func GetManifest(ctx context.Context, contextName, namespace, kind, name string)
 		return nil, fmt.Errorf("unknown resource kind: %s", kind)
 	}
 
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	cfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		rules,
-		&clientcmd.ConfigOverrides{CurrentContext: contextName},
-	)
-	restCfg, err := cfg.ClientConfig()
+	restCfg, err := RESTConfig(contextName)
 	if err != nil {
 		return nil, err
 	}
