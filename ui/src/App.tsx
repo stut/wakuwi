@@ -8,8 +8,7 @@ import { PodLogView } from "@/components/PodLogView"
 import { ResourceList } from "@/components/ResourceList"
 import { Search } from "@/components/Search"
 import { ResourceDetail } from "@/components/ResourceDetail"
-import { ProcessList } from "@/components/ProcessList"
-import { ProcessLogView } from "@/components/ProcessLogView"
+import { ProcessesModal } from "@/components/ProcessesModal"
 import { Issues } from "@/components/Issues"
 import { ManifestView } from "@/components/ManifestView"
 import { fetchJSON } from "@/lib/api"
@@ -25,17 +24,6 @@ import type { Capabilities, KubeContext, Process } from "@/types"
 
 const enc = encodeURIComponent
 const dec = decodeURIComponent
-
-function readLS(key: string): string | null {
-  const raw = localStorage.getItem(key)
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw)
-    return typeof parsed === "string" ? parsed : null
-  } catch {
-    return raw
-  }
-}
 
 export default function App() {
   useServerReload()
@@ -54,6 +42,7 @@ export default function App() {
   const [appVersion, setAppVersion] = useState<string>("")
   const [capabilities, setCapabilities] = useState<Capabilities>({ inCluster: false, processes: false, secrets: false })
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(true)
+  const [processModal, setProcessModal] = useState<{ id: string | null } | null>(null)
 
   useEffect(() => {
     setErrorNotifier((msg) => {
@@ -69,6 +58,13 @@ export default function App() {
   const inCluster = capabilities.inCluster
   const logicalPath = inCluster ? (path === "/" ? "/in-cluster" : `/in-cluster${path}`) : path
   const navigate = (to: string, opts?: { replace?: boolean }) => {
+    // Processes live in a modal, not a page — intercept path-style navigation
+    // so callers (e.g. PodDetail after starting a port forward) stay in place.
+    const processMatch = to.match(/^\/_\/processes(?:\/([^/]+))?$/)
+    if (processMatch) {
+      setProcessModal({ id: processMatch[1] ? dec(processMatch[1]) : null })
+      return
+    }
     if (inCluster) {
       to = to.replace(/^\/in-cluster(?=\/|$)/, "")
       if (to === "") to = "/"
@@ -77,34 +73,25 @@ export default function App() {
   }
 
   const parts = logicalPath.split("/").filter(Boolean).map(dec)
-  const isProcessesPath = parts[0] === "_" && parts[1] === "processes"
-  const processId = isProcessesPath ? parts[2] : null
 
-  // URL-derived values (null on processes path)
-  const urlContext = isProcessesPath ? null : parts[0] ?? null
-  const urlRawNs   = isProcessesPath ? null : parts[1] ?? null
+  // Legacy bookmarks: /_/processes used to be a page — open the modal instead.
+  // Checked against the raw path because in-cluster prefixing never applied to it.
+  const rawParts = path.split("/").filter(Boolean)
+  const isLegacyProcessesPath = rawParts[0] === "_" && rawParts[1] === "processes"
+  useEffect(() => {
+    if (isLegacyProcessesPath) {
+      setProcessModal({ id: rawParts[2] ? dec(rawParts[2]) : null })
+      rawNavigate("/", { replace: true })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLegacyProcessesPath])
+
+  const urlContext = parts[0] ?? null
+  const urlRawNs   = parts[1] ?? null
   const urlNamespace = urlRawNs === "_" ? null : urlRawNs
-  const urlResource  = isProcessesPath ? null : parts[2] ?? null
-  const urlPodName   = isProcessesPath ? null : parts[3] ?? null
-  const urlSubView   = isProcessesPath ? null : parts[4] ?? null  // e.g. "logs"
-
-  // Persisted across reloads — never reset, even when navigating to /_/processes
-  const [savedContext,   setSavedContext]   = useState<string | null>(() => readLS("wakuwi.context"))
-  const [savedNamespace, setSavedNamespace] = useState<string | null>(() => readLS("wakuwi.namespace"))
-  const [savedResource,  setSavedResource]  = useState<string | null>(null)
-
-  useEffect(() => {
-    if (urlContext)   { setSavedContext(urlContext);     localStorage.setItem("wakuwi.context",    urlContext) }
-  }, [urlContext])
-  useEffect(() => {
-    if (urlNamespace) { setSavedNamespace(urlNamespace); localStorage.setItem("wakuwi.namespace", urlNamespace) }
-  }, [urlNamespace])
-  useEffect(() => { if (urlResource)  setSavedResource(urlResource)   }, [urlResource])
-
-  // Display = URL value when available, saved value on processes path
-  const context   = urlContext   ?? savedContext
-  const namespace = urlNamespace ?? savedNamespace
-  const resource  = urlResource  ?? savedResource
+  const urlResource  = parts[2] ?? null
+  const urlPodName   = parts[3] ?? null
+  const urlSubView   = parts[4] ?? null  // e.g. "logs"
 
   const toContext = (ctx: string) => {
     setSwitchingContext(true)
@@ -117,7 +104,7 @@ export default function App() {
       ? `/${enc(urlContext!)}/${enc(ns)}/${enc(urlResource)}`
       : `/${enc(urlContext!)}/${enc(ns)}`)
   const toResource = (r: string) => navigate(`/${enc(urlContext!)}/${enc(urlNamespace!)}/${enc(r)}`)
-  const toDetail = (n: string) => navigate(`/${enc(context!)}/${enc(namespace!)}/${enc(resource!)}/${enc(n)}`)
+  const toDetail = (n: string) => navigate(`/${enc(urlContext!)}/${enc(urlNamespace!)}/${enc(urlResource!)}/${enc(n)}`)
 
   const refreshProcessCount = useCallback(() => {
     if (!capabilities.processes) return
@@ -179,11 +166,7 @@ export default function App() {
 
   const clusterName = contexts.find((c) => c.name === urlContext)?.cluster ?? urlContext ?? ""
 
-  const breadcrumb: BreadcrumbItem[] = isProcessesPath ? [
-    { label: "wakuwi", onClick: () => navigate("/") },
-    { label: "Processes", onClick: processId ? () => navigate("/_/processes") : undefined },
-    ...(processId ? [{ label: processId }] : []),
-  ] : [
+  const breadcrumb: BreadcrumbItem[] = [
     { label: "wakuwi", onClick: () => navigate("/") },
     // In-cluster there's a single fixed context — the cluster crumb is noise.
     ...(urlContext && !inCluster ? [{ label: clusterName, onClick: (urlNamespace || urlResource === "issues") ? () => navigate(`/${enc(urlContext)}`) : undefined }] : []),
@@ -206,7 +189,15 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, clusterName])
 
-  if (contextsLoading || capabilitiesLoading || redirectingToOnlyContext) {
+  const processesModal = processModal ? (
+    <ProcessesModal
+      initialProcessId={processModal.id}
+      onClose={() => { setProcessModal(null); refreshProcessCount() }}
+      onNavigate={(to) => { setProcessModal(null); navigate(to) }}
+    />
+  ) : null
+
+  if (contextsLoading || capabilitiesLoading || redirectingToOnlyContext || isLegacyProcessesPath) {
     return (
       <div className="flex h-screen items-center justify-center text-muted-foreground text-sm">
         Connecting…
@@ -270,6 +261,7 @@ export default function App() {
             </div>
           </>
         )}
+        {processesModal}
       </div>
     )
   }
@@ -279,14 +271,14 @@ export default function App() {
       <TopBar
         breadcrumb={breadcrumb}
         contexts={contexts}
-        selectedContext={context}
+        selectedContext={urlContext}
         onContextSelect={toContext}
         processCount={processCount}
         showProcesses={capabilities.processes}
         showContextSelector={!inCluster}
-        onSearchClick={() => context ? navigate(`/${enc(context)}`) : undefined}
-        onIssuesClick={() => context ? navigate(`/${enc(context)}/_/issues`) : undefined}
-        onProcessesClick={() => navigate("/_/processes")}
+        onSearchClick={() => urlContext ? navigate(`/${enc(urlContext)}`) : undefined}
+        onIssuesClick={() => urlContext ? navigate(`/${enc(urlContext)}/_/issues`) : undefined}
+        onProcessesClick={() => setProcessModal({ id: null })}
       />
       {urlNamespace ? (
         <Sidebar
@@ -314,14 +306,9 @@ export default function App() {
           <p className="text-sm font-medium text-foreground">Switching context…</p>
         </div>
       )}
+      {processesModal}
       <main className={`mt-14 p-6 h-[calc(100vh-3.5rem)] bg-muted/40 ${urlNamespace ? "ml-56" : ""}`}>
-        {isProcessesPath ? (
-          processId ? (
-            <ProcessLogView processId={processId} onDismissed={() => navigate("/_/processes")} onNavigate={navigate} />
-          ) : (
-            <ProcessList onSelect={(id) => navigate(`/_/processes/${id}`)} />
-          )
-        ) : !urlNamespace && urlResource === "issues" ? (
+        {!urlNamespace && urlResource === "issues" ? (
           <Issues context={urlContext!} onNavigate={navigate} />
         ) : !urlResource && !urlNamespace ? (
           <Search context={urlContext!} namespaces={namespaces} namespacesLoading={namespacesLoading} showSecrets={capabilities.secrets} hideContextName={inCluster} onNavigate={navigate} />
