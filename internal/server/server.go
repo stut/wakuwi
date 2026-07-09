@@ -25,6 +25,8 @@ type Options struct {
 	// ShowSecrets exposes the Secret resource kind through the API. Off by
 	// default; RBAC is the real security boundary — this is belt-and-braces.
 	ShowSecrets bool
+	// AccessLog logs every HTTP request (method, path, status, duration).
+	AccessLog bool
 }
 
 type Server struct {
@@ -61,6 +63,10 @@ func (s *Server) processesEnabled() bool {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !s.opts.AccessLog {
+		s.mux.ServeHTTP(w, r)
+		return
+	}
 	rec := &statusRecorder{ResponseWriter: w, status: 200}
 	start := time.Now()
 	s.mux.ServeHTTP(rec, r)
