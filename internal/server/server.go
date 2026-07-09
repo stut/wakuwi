@@ -423,6 +423,9 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scanner := bufio.NewScanner(stream)
+	// Log lines can easily exceed bufio's default 64KB limit; a too-long
+	// line would otherwise error out and end the stream.
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		select {
 		case <-r.Context().Done():
@@ -431,6 +434,10 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "data: %s\n\n", scanner.Text())
 			flusher.Flush()
 		}
+	}
+	if err := scanner.Err(); err != nil && r.Context().Err() == nil {
+		fmt.Fprintf(w, "data: [log stream error: %v]\n\n", err)
+		flusher.Flush()
 	}
 }
 
