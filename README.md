@@ -48,6 +48,7 @@ The UI is embedded in the binary — no separate assets needed at runtime.
 ```sh
 wakuwi --port 9090        # custom port (default 9753)
 wakuwi --show-secrets     # expose the Secret resource kind (hidden by default)
+wakuwi --access-log       # log every HTTP request (off by default)
 ```
 
 ## Running in a cluster

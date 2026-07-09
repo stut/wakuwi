@@ -25,6 +25,7 @@ var version = "dev"
 func main() {
 	port := flag.Int("port", 9753, "port to listen on")
 	showSecrets := flag.Bool("show-secrets", false, "expose the Secret resource kind through the UI")
+	accessLog := flag.Bool("access-log", false, "log every HTTP request")
 	flag.Parse()
 
 	inCluster := kube.InCluster()
@@ -63,6 +64,7 @@ func main() {
 	srv := server.New(wakuwi.StaticFiles, pm, version, server.Options{
 		InCluster:   inCluster,
 		ShowSecrets: *showSecrets,
+		AccessLog:   *accessLog,
 	})
 
 	// Bind the socket before starting the probe so the probe only

@@ -87,6 +87,8 @@ spec:
           args: []
           # To enable the secrets browser (with the RBAC rule above):
           # args: ["--show-secrets"]
+          # To log every HTTP request:
+          # args: ["--access-log"]
           ports:
             - name: http
               containerPort: 9753
