@@ -324,9 +324,9 @@ export default function App() {
         ) : !urlNamespace && urlResource === "issues" ? (
           <Issues context={urlContext!} onNavigate={navigate} />
         ) : !urlResource && !urlNamespace ? (
-          <Search context={urlContext!} namespaces={namespaces} namespacesLoading={namespacesLoading} showSecrets={capabilities.secrets} onNavigate={navigate} />
+          <Search context={urlContext!} namespaces={namespaces} namespacesLoading={namespacesLoading} showSecrets={capabilities.secrets} hideContextName={inCluster} onNavigate={navigate} />
         ) : !urlResource ? (
-          <Search context={urlContext!} namespace={urlNamespace!} namespaces={[]} namespacesLoading={false} showSecrets={capabilities.secrets} onNavigate={navigate} />
+          <Search context={urlContext!} namespace={urlNamespace!} namespaces={[]} namespacesLoading={false} showSecrets={capabilities.secrets} hideContextName={inCluster} onNavigate={navigate} />
         ) : urlPodName && urlSubView === "manifest" ? (
           <ManifestView
             context={urlContext!}

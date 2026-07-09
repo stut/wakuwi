@@ -24,10 +24,13 @@ interface Props {
   namespaces: string[]
   namespacesLoading: boolean
   showSecrets: boolean
+  // In-cluster the synthetic context name is meaningless to the user —
+  // there is no portable way to discover a real cluster name — so hide it.
+  hideContextName: boolean
   onNavigate: (path: string) => void
 }
 
-export function Search({ context, namespace, namespaces, namespacesLoading, showSecrets, onNavigate }: Props) {
+export function Search({ context, namespace, namespaces, namespacesLoading, showSecrets, hideContextName, onNavigate }: Props) {
   const [query, setQuery] = useState("")
   const [nsFilter, setNsFilter] = useState("")
   const [kinds, setKinds] = useState<string[]>(loadKinds)
@@ -71,9 +74,11 @@ export function Search({ context, namespace, namespaces, namespacesLoading, show
     <div className="flex flex-col h-full overflow-auto">
       <div className="w-full pt-16 px-4 pb-16">
         <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-semibold tracking-tight mb-6 text-center">
-          {namespace ? `${context} / ${namespace}` : context}
-        </h1>
+        {(hideContextName ? namespace : true) && (
+          <h1 className="text-2xl font-semibold tracking-tight mb-6 text-center">
+            {hideContextName ? namespace : namespace ? `${context} / ${namespace}` : context}
+          </h1>
+        )}
 
         {/* search input */}
         <div className="relative mb-6">
