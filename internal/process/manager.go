@@ -26,18 +26,18 @@ const (
 )
 
 type Process struct {
-	ID         string    `json:"id"`
-	Kind       Kind      `json:"kind"`
-	Name       string    `json:"name"`
-	Context    string    `json:"context"`
-	Namespace  string    `json:"namespace"`
-	Resource   string    `json:"resource"`
-	LocalPort  int       `json:"localPort"`
-	RemotePort int       `json:"remotePort"`
-	Status     Status    `json:"status"`
-	StartedAt  string    `json:"startedAt"`
-	StoppedAt  string    `json:"stoppedAt,omitempty"`
-	LogFile    string    `json:"logFile"`
+	ID         string `json:"id"`
+	Kind       Kind   `json:"kind"`
+	Name       string `json:"name"`
+	Context    string `json:"context"`
+	Namespace  string `json:"namespace"`
+	Resource   string `json:"resource"`
+	LocalPort  int    `json:"localPort"`
+	RemotePort int    `json:"remotePort"`
+	Status     Status `json:"status"`
+	StartedAt  string `json:"startedAt"`
+	StoppedAt  string `json:"stoppedAt,omitempty"`
+	LogFile    string `json:"logFile"`
 	cancel     context.CancelFunc
 }
 

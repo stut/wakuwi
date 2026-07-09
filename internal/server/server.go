@@ -591,7 +591,6 @@ func (s *Server) handleProcessLogs(w http.ResponseWriter, r *http.Request, id st
 	}
 }
 
-
 func (s *Server) spaHandler() http.Handler {
 	fileServer := http.FileServer(http.FS(s.static))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
