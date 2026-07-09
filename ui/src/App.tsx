@@ -180,7 +180,10 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!urlContext) return
+    // Until capabilities arrive, urlContext may be misparsed: in-cluster the
+    // context segment is absent from the URL, so /_/issues would read as
+    // context "_" and fire a doomed namespaces fetch.
+    if (!urlContext || capabilitiesLoading) return
     setNamespacesLoading(true)
     setNamespacesError(null)
     setNamespaces([])
@@ -189,7 +192,7 @@ export default function App() {
       .then(setNamespaces)
       .catch((e: Error) => setNamespacesError(e.message))
       .finally(() => setNamespacesLoading(false))
-  }, [urlContext])
+  }, [urlContext, capabilitiesLoading])
 
   // Auto-redirect past pages that offer only a single choice.
   // Skipped in-cluster: the context segment doesn't exist in the URL there.
