@@ -21,7 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Deploy key bypasses the main-branch ruleset so the workflow can
+          # push release commits and tags directly.
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
           fetch-depth: 0
 
       - uses: actions/setup-go@v5
