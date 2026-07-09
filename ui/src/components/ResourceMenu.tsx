@@ -37,7 +37,12 @@ interface Props {
   showSecrets: boolean
 }
 
-export function ResourceMenu({ selected, onSelect, onSearch, showSecrets }: Props) {
+export function ResourceMenu({
+  selected,
+  onSelect,
+  onSearch,
+  showSecrets,
+}: Props) {
   const groups = RESOURCE_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((i) => showSecrets || i.value !== "secrets"),
@@ -50,10 +55,11 @@ export function ResourceMenu({ selected, onSelect, onSearch, showSecrets }: Prop
           "w-full px-3 py-1 text-left text-sm outline-none transition-colors hover:bg-accent flex items-center gap-2",
           selected === null
             ? "border-l-2 border-primary bg-accent pl-[10px] font-medium"
-            : "border-l-2 border-transparent pl-[10px]"
+            : "border-l-2 border-transparent pl-[10px]",
         )}
       >
-        <Search className="h-3.5 w-3.5" />Search
+        <Search className="h-3.5 w-3.5" />
+        Search
       </button>
       {groups.map((group) => (
         <div key={group.label} className="mb-1">
@@ -67,7 +73,7 @@ export function ResourceMenu({ selected, onSelect, onSearch, showSecrets }: Prop
                 "w-full px-3 py-1 text-left text-sm outline-none transition-colors hover:bg-accent",
                 selected === item.value
                   ? "border-l-2 border-primary bg-accent pl-[10px] font-medium"
-                  : "border-l-2 border-transparent pl-[10px]"
+                  : "border-l-2 border-transparent pl-[10px]",
               )}
               onClick={() => onSelect(item.value)}
             >

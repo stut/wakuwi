@@ -25,6 +25,12 @@ jobs:
       - name: Install dependencies
         run: npm --prefix ui ci
 
+      - name: Check formatting
+        run: npm --prefix ui run format:check
+
+      - name: Lint
+        run: npm --prefix ui run lint
+
       - name: Build (typecheck + bundle)
         run: npm --prefix ui run build
 
@@ -63,6 +69,11 @@ jobs:
 
       - name: Vet
         run: go vet ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
 
       - name: Build
         run: go build ./...

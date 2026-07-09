@@ -13,11 +13,20 @@ interface Props {
   disabled?: boolean
 }
 
-export function NamespaceSelector({ namespaces, loading, error, selected, onSelect, disabled }: Props) {
+export function NamespaceSelector({
+  namespaces,
+  loading,
+  error,
+  selected,
+  onSelect,
+  disabled,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState("")
 
-  const filtered = filter ? namespaces.filter((ns) => ns.includes(filter)) : namespaces
+  const filtered = filter
+    ? namespaces.filter((ns) => ns.includes(filter))
+    : namespaces
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -52,7 +61,9 @@ export function NamespaceSelector({ namespaces, loading, error, selected, onSele
             </div>
             <div className="max-h-60 overflow-y-auto p-1">
               {filtered.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">No namespaces found.</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No namespaces found.
+                </p>
               ) : (
                 filtered.map((ns) => (
                   <button
@@ -64,7 +75,12 @@ export function NamespaceSelector({ namespaces, loading, error, selected, onSele
                       setOpen(false)
                     }}
                   >
-                    <Check className={cn("h-4 w-4 shrink-0", selected === ns ? "opacity-100" : "opacity-0")} />
+                    <Check
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        selected === ns ? "opacity-100" : "opacity-0",
+                      )}
+                    />
                     {ns}
                   </button>
                 ))

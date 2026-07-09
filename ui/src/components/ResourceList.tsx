@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from "react"
-import { RefreshCw, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight } from "lucide-react"
+import {
+  RefreshCw,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronRight,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { fetchJSON } from "@/lib/api"
 import { useAutoRefresh } from "@/lib/useAutoRefresh"
@@ -34,7 +40,10 @@ function getCellValue(row: ResourceSummary, key: string): string {
 }
 
 export function ResourceList({ kind, context, namespace, onSelect }: Props) {
-  const cols = RESOURCE_COLUMNS[kind] ?? [{ key: "name", label: "Name" }, { key: "age", label: "Age" }]
+  const cols = RESOURCE_COLUMNS[kind] ?? [
+    { key: "name", label: "Name" },
+    { key: "age", label: "Age" },
+  ]
   const [rows, setRows] = useState<ResourceSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,18 +55,29 @@ export function ResourceList({ kind, context, namespace, onSelect }: Props) {
     setLoading(true)
     setError(null)
     fetchJSON<ResourceSummary[]>(
-      `/api/resources?context=${encodeURIComponent(context)}&namespace=${encodeURIComponent(namespace)}&kind=${encodeURIComponent(kind)}`
+      `/api/resources?context=${encodeURIComponent(context)}&namespace=${encodeURIComponent(namespace)}&kind=${encodeURIComponent(kind)}`,
     )
-      .then((data) => { setRows(data); setLoading(false) })
-      .catch((e: Error) => { setError(e.message); setLoading(false) })
+      .then((data) => {
+        setRows(data)
+        setLoading(false)
+      })
+      .catch((e: Error) => {
+        setError(e.message)
+        setLoading(false)
+      })
   }, [context, namespace, kind])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
   useAutoRefresh(load)
 
   const toggleSort = (key: string) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
-    else { setSortKey(key); setSortDir("asc") }
+    else {
+      setSortKey(key)
+      setSortDir("asc")
+    }
   }
 
   const filtered = rows
@@ -70,8 +90,13 @@ export function ResourceList({ kind, context, namespace, onSelect }: Props) {
     })
 
   const SortIcon = ({ col }: { col: string }) =>
-    sortKey !== col ? <ChevronsUpDown className="ml-1 h-3 w-3 opacity-40" /> :
-    sortDir === "asc" ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+    sortKey !== col ? (
+      <ChevronsUpDown className="ml-1 h-3 w-3 opacity-40" />
+    ) : sortDir === "asc" ? (
+      <ChevronUp className="ml-1 h-3 w-3" />
+    ) : (
+      <ChevronDown className="ml-1 h-3 w-3" />
+    )
 
   return (
     <div className="flex flex-col h-full">
@@ -83,17 +108,25 @@ export function ResourceList({ kind, context, namespace, onSelect }: Props) {
           onChange={(e) => setNameFilter(e.target.value)}
         />
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{filtered.length} items</span>
+          <span className="text-xs text-muted-foreground">
+            {filtered.length} items
+          </span>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", loading && "animate-spin")}
+            />
           </Button>
         </div>
       </div>
 
       {error ? (
-        <div className="flex flex-1 items-center justify-center text-red-500 text-sm">{error}</div>
+        <div className="flex flex-1 items-center justify-center text-red-500 text-sm">
+          {error}
+        </div>
       ) : loading && rows.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">Loading…</div>
+        <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
+          Loading…
+        </div>
       ) : (
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
@@ -105,7 +138,10 @@ export function ResourceList({ kind, context, namespace, onSelect }: Props) {
                     className="h-10 px-3 text-left text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground whitespace-nowrap"
                     onClick={() => toggleSort(col.key)}
                   >
-                    <span className="flex items-center">{col.label}<SortIcon col={col.key} /></span>
+                    <span className="flex items-center">
+                      {col.label}
+                      <SortIcon col={col.key} />
+                    </span>
                   </th>
                 ))}
                 <th className="w-4" />
@@ -121,17 +157,28 @@ export function ResourceList({ kind, context, namespace, onSelect }: Props) {
                   {cols.map((col) => (
                     <td
                       key={col.key}
-                      className={cn("px-3 py-2", col.key === "name" && "font-medium", col.mono && "font-mono text-xs text-muted-foreground")}
+                      className={cn(
+                        "px-3 py-2",
+                        col.key === "name" && "font-medium",
+                        col.mono && "font-mono text-xs text-muted-foreground",
+                      )}
                     >
                       {getCellValue(row, col.key) || "—"}
                     </td>
                   ))}
-                  <td className="px-3 py-2 text-muted-foreground"><ChevronRight className="h-3.5 w-3.5" /></td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={cols.length} className="px-3 py-8 text-center text-muted-foreground">No resources found.</td>
+                  <td
+                    colSpan={cols.length}
+                    className="px-3 py-8 text-center text-muted-foreground"
+                  >
+                    No resources found.
+                  </td>
                 </tr>
               )}
             </tbody>

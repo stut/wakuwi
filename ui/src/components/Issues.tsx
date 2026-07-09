@@ -35,11 +35,19 @@ export function Issues({ context, onNavigate }: Props) {
   const load = useCallback(() => {
     setLoading(true)
     fetchJSON<Issue[]>(`/api/issues?context=${enc(context)}`)
-      .then((data) => { setIssues(data ?? []); setLoading(false) })
-      .catch((e: Error) => { setError(e.message); setLoading(false) })
+      .then((data) => {
+        setIssues(data ?? [])
+        setLoading(false)
+      })
+      .catch((e: Error) => {
+        setError(e.message)
+        setLoading(false)
+      })
   }, [context])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
   useAutoRefresh(load, 60_000)
 
   const all = issues ?? []
@@ -61,14 +69,34 @@ export function Issues({ context, onNavigate }: Props) {
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-semibold">Issues in {context}</h1>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", loading && "animate-spin")}
+            />
           </Button>
         </div>
         <div className="flex gap-2 flex-wrap">
           {[
-            { label: "Namespace", value: nsFilter, set: setNsFilter, options: namespaces },
-            { label: "Kind", value: kindFilter, set: setKindFilter, options: kinds.map((k) => ({ value: k, label: RESOURCE_LABELS[k] ?? k })) },
-            { label: "Message", value: msgFilter, set: setMsgFilter, options: messages },
+            {
+              label: "Namespace",
+              value: nsFilter,
+              set: setNsFilter,
+              options: namespaces,
+            },
+            {
+              label: "Kind",
+              value: kindFilter,
+              set: setKindFilter,
+              options: kinds.map((k) => ({
+                value: k,
+                label: RESOURCE_LABELS[k] ?? k,
+              })),
+            },
+            {
+              label: "Message",
+              value: msgFilter,
+              set: setMsgFilter,
+              options: messages,
+            },
           ].map(({ label, value, set, options }) => (
             <select
               key={label}
@@ -80,7 +108,11 @@ export function Issues({ context, onNavigate }: Props) {
               {options.map((o) => {
                 const val = typeof o === "string" ? o : o.value
                 const lbl = typeof o === "string" ? o : o.label
-                return <option key={val} value={val}>{lbl}</option>
+                return (
+                  <option key={val} value={val}>
+                    {lbl}
+                  </option>
+                )
               })}
             </select>
           ))}
@@ -100,12 +132,29 @@ export function Issues({ context, onNavigate }: Props) {
         </div>
       )}
 
-      {[{ label: "Errors", items: errors, icon: AlertCircle, cls: "text-red-600 dark:text-red-500" },
-        { label: "Warnings", items: warnings, icon: AlertTriangle, cls: "text-yellow-500" }]
+      {[
+        {
+          label: "Errors",
+          items: errors,
+          icon: AlertCircle,
+          cls: "text-red-600 dark:text-red-500",
+        },
+        {
+          label: "Warnings",
+          items: warnings,
+          icon: AlertTriangle,
+          cls: "text-yellow-500",
+        },
+      ]
         .filter((g) => g.items.length > 0)
         .map((group) => (
           <div key={group.label} className="mb-6">
-            <div className={cn("flex items-center gap-2 mb-3 text-sm font-semibold", group.cls)}>
+            <div
+              className={cn(
+                "flex items-center gap-2 mb-3 text-sm font-semibold",
+                group.cls,
+              )}
+            >
               <group.icon className="h-4 w-4" />
               {group.label} ({group.items.length})
             </div>
@@ -113,9 +162,16 @@ export function Issues({ context, onNavigate }: Props) {
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/30">
                   <tr>
-                    {["Kind", "Name", "Namespace", "Age", "Message"].map((h) => (
-                      <th key={h} className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">{h}</th>
-                    ))}
+                    {["Kind", "Name", "Namespace", "Age", "Message"].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                        >
+                          {h}
+                        </th>
+                      ),
+                    )}
                     <th className="w-4" />
                   </tr>
                 </thead>
@@ -124,14 +180,28 @@ export function Issues({ context, onNavigate }: Props) {
                     <tr
                       key={i}
                       className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
-                      onClick={() => onNavigate(`/${enc(context)}/${enc(issue.namespace)}/${enc(issue.kind)}/${enc(issue.name)}`)}
+                      onClick={() =>
+                        onNavigate(
+                          `/${enc(context)}/${enc(issue.namespace)}/${enc(issue.kind)}/${enc(issue.name)}`,
+                        )
+                      }
                     >
-                      <td className="px-3 py-2 text-muted-foreground">{RESOURCE_LABELS[issue.kind] ?? issue.kind}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {RESOURCE_LABELS[issue.kind] ?? issue.kind}
+                      </td>
                       <td className="px-3 py-2 font-medium">{issue.name}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{issue.namespace}</td>
-                      <td className="px-3 py-2 text-muted-foreground tabular-nums">{issue.age}</td>
-                      <td className={cn("px-3 py-2", group.cls)}>{issue.message}</td>
-                      <td className="px-3 py-2 text-muted-foreground"><ChevronRight className="h-3.5 w-3.5" /></td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {issue.namespace}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground tabular-nums">
+                        {issue.age}
+                      </td>
+                      <td className={cn("px-3 py-2", group.cls)}>
+                        {issue.message}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

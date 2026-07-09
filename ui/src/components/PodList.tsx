@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from "react"
-import { RefreshCw, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight } from "lucide-react"
+import {
+  RefreshCw,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronRight,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { fetchJSON } from "@/lib/api"
 import { useAutoRefresh } from "@/lib/useAutoRefresh"
@@ -12,7 +18,10 @@ interface Props {
   onPodSelect: (name: string) => void
 }
 
-type SortKey = keyof Pick<PodSummary, "name" | "status" | "ready" | "restarts" | "age" | "node" | "ip">
+type SortKey = keyof Pick<
+  PodSummary,
+  "name" | "status" | "ready" | "restarts" | "age" | "node" | "ip"
+>
 
 function fuzzy(str: string, query: string): boolean {
   const s = str.toLowerCase()
@@ -47,28 +56,38 @@ export function PodList({ context, namespace, onPodSelect }: Props) {
     setLoading(true)
     setError(null)
     fetchJSON<PodSummary[]>(
-      `/api/pods?context=${encodeURIComponent(context)}&namespace=${encodeURIComponent(namespace)}`
+      `/api/pods?context=${encodeURIComponent(context)}&namespace=${encodeURIComponent(namespace)}`,
     )
       .then(setPods)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [context, namespace])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
   useAutoRefresh(load)
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
-    else { setSortKey(key); setSortDir("asc") }
+    else {
+      setSortKey(key)
+      setSortDir("asc")
+    }
   }
 
   const statuses = Array.from(new Set(pods.map((p) => p.status))).sort()
 
-  const toggleStatus = (s: string) => setStatusFilter((prev) => {
-    const next = new Set(prev)
-    next.has(s) ? next.delete(s) : next.add(s)
-    return next
-  })
+  const toggleStatus = (s: string) =>
+    setStatusFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(s)) {
+        next.delete(s)
+      } else {
+        next.add(s)
+      }
+      return next
+    })
 
   const filtered = pods
     .filter((p) => !nameFilter || fuzzy(p.name, nameFilter))
@@ -81,15 +100,23 @@ export function PodList({ context, namespace, onPodSelect }: Props) {
     })
 
   const SortIcon = ({ col }: { col: SortKey }) =>
-    sortKey !== col ? <ChevronsUpDown className="ml-1 h-3 w-3 opacity-40" /> :
-    sortDir === "asc" ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+    sortKey !== col ? (
+      <ChevronsUpDown className="ml-1 h-3 w-3 opacity-40" />
+    ) : sortDir === "asc" ? (
+      <ChevronUp className="ml-1 h-3 w-3" />
+    ) : (
+      <ChevronDown className="ml-1 h-3 w-3" />
+    )
 
   const ColHead = ({ col, label }: { col: SortKey; label: string }) => (
     <th
       className="h-10 px-3 text-left text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground whitespace-nowrap"
       onClick={() => toggleSort(col)}
     >
-      <span className="flex items-center">{label}<SortIcon col={col} /></span>
+      <span className="flex items-center">
+        {label}
+        <SortIcon col={col} />
+      </span>
     </th>
   )
 
@@ -110,24 +137,32 @@ export function PodList({ context, namespace, onPodSelect }: Props) {
               "rounded-full border px-3 py-1 text-xs transition-colors",
               statusFilter.has(s)
                 ? "border-primary bg-primary text-primary-foreground"
-                : "hover:bg-accent"
+                : "hover:bg-accent",
             )}
           >
             {s}
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{filtered.length} pods</span>
+          <span className="text-xs text-muted-foreground">
+            {filtered.length} pods
+          </span>
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", loading && "animate-spin")}
+            />
           </Button>
         </div>
       </div>
 
       {error ? (
-        <div className="flex flex-1 items-center justify-center text-red-500 text-sm">{error}</div>
+        <div className="flex flex-1 items-center justify-center text-red-500 text-sm">
+          {error}
+        </div>
       ) : loading && pods.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">Loading…</div>
+        <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
+          Loading…
+        </div>
       ) : (
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
@@ -149,16 +184,30 @@ export function PodList({ context, namespace, onPodSelect }: Props) {
                   onClick={() => onPodSelect(pod.name)}
                 >
                   <td className="px-3 py-2 font-medium">{pod.name}</td>
-                  <td className={cn("px-3 py-2 font-medium", statusClass(pod.status))}>{pod.status}</td>
+                  <td
+                    className={cn(
+                      "px-3 py-2 font-medium",
+                      statusClass(pod.status),
+                    )}
+                  >
+                    {pod.status}
+                  </td>
                   <td className="px-3 py-2 tabular-nums">{pod.ready}</td>
                   <td className="px-3 py-2 tabular-nums">{pod.restarts}</td>
                   <td className="px-3 py-2 tabular-nums">{pod.age}</td>
-                  <td className="px-3 py-2 text-muted-foreground"><ChevronRight className="h-3.5 w-3.5" /></td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No pods found.</td>
+                  <td
+                    colSpan={7}
+                    className="px-3 py-8 text-center text-muted-foreground"
+                  >
+                    No pods found.
+                  </td>
                 </tr>
               )}
             </tbody>

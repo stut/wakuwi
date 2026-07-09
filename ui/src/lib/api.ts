@@ -1,6 +1,9 @@
 import { reportError } from "./errorBus"
 
-export async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
+export async function fetchJSON<T>(
+  url: string,
+  init?: RequestInit,
+): Promise<T> {
   const r = await fetch(url, init)
   if (!r.ok) {
     const body = (await r.text()).trim()

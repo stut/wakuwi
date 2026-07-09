@@ -747,13 +747,11 @@ func GetResource(ctx context.Context, contextName, namespace, kind, name string)
 			class = *ing.Spec.IngressClassName
 		}
 		address := ""
-		for _, lb := range ing.Status.LoadBalancer.Ingress {
-			if lb.IP != "" {
-				address = lb.IP
-			} else {
-				address = lb.Hostname
+		if lbs := ing.Status.LoadBalancer.Ingress; len(lbs) > 0 {
+			address = lbs[0].IP
+			if address == "" {
+				address = lbs[0].Hostname
 			}
-			break
 		}
 		specItems := []KV{{Key: "Class", Value: class}}
 		if address != "" {

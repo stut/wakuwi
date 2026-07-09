@@ -44,7 +44,12 @@ export function Sidebar({
           />
         </div>
         <div className="px-1">
-          <ResourceMenu selected={selectedResource} onSelect={onResourceSelect} onSearch={onSearch} showSecrets={showSecrets} />
+          <ResourceMenu
+            selected={selectedResource}
+            onSelect={onResourceSelect}
+            onSearch={onSearch}
+            showSecrets={showSecrets}
+          />
         </div>
       </div>
       {latestRelease && (
