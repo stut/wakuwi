@@ -27,11 +27,11 @@ function fuzzy(str: string, query: string): boolean {
 }
 
 function statusClass(status: string): string {
-  if (status === "Running") return "text-green-600"
+  if (status === "Running") return "text-green-600 dark:text-green-500"
   if (status === "Pending") return "text-yellow-500"
   if (status === "Terminating") return "text-orange-500"
   if (status === "Succeeded") return "text-blue-500"
-  return "text-red-600"
+  return "text-red-600 dark:text-red-500"
 }
 
 export function PodList({ context, namespace, onPodSelect }: Props) {

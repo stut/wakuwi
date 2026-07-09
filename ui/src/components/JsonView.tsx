@@ -15,13 +15,13 @@ export function JsonView({ json }: Props) {
     (match) => {
       if (/^"/.test(match)) {
         if (match.endsWith(":")) {
-          return `<span style="color:#6d28d9">${match}</span>` // key - purple
+          return `<span class="text-violet-700 dark:text-violet-400">${match}</span>` // key - purple
         }
-        return `<span style="color:#15803d">${match}</span>` // string - green
+        return `<span class="text-green-700 dark:text-green-400">${match}</span>` // string - green
       }
-      if (/true|false/.test(match)) return `<span style="color:#b45309">${match}</span>` // boolean - amber
-      if (/null/.test(match)) return `<span style="color:#b91c1c">${match}</span>` // null - red
-      return `<span style="color:#1d4ed8">${match}</span>` // number - blue
+      if (/true|false/.test(match)) return `<span class="text-amber-700 dark:text-amber-400">${match}</span>` // boolean - amber
+      if (/null/.test(match)) return `<span class="text-red-700 dark:text-red-400">${match}</span>` // null - red
+      return `<span class="text-blue-700 dark:text-blue-400">${match}</span>` // number - blue
     }
   )
 

@@ -100,7 +100,7 @@ export function Issues({ context, onNavigate }: Props) {
         </div>
       )}
 
-      {[{ label: "Errors", items: errors, icon: AlertCircle, cls: "text-red-600" },
+      {[{ label: "Errors", items: errors, icon: AlertCircle, cls: "text-red-600 dark:text-red-500" },
         { label: "Warnings", items: warnings, icon: AlertTriangle, cls: "text-yellow-500" }]
         .filter((g) => g.items.length > 0)
         .map((group) => (

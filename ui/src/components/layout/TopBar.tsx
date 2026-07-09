@@ -1,6 +1,7 @@
 import { Activity, AlertTriangle, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ContextSelector } from "@/components/ContextSelector"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import { Breadcrumb, type BreadcrumbItem } from "@/components/Breadcrumb"
 import { LogoIcon } from "@/components/Logo"
 import type { KubeContext } from "@/types"
@@ -46,6 +47,7 @@ export function TopBar({ breadcrumb, contexts, selectedContext, onContextSelect,
           selected={selectedContext}
           onSelect={onContextSelect}
         />
+        <ThemeToggle />
       </div>
     </header>
   )
