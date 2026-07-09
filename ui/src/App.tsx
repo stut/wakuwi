@@ -21,7 +21,7 @@ import { useAutoRefresh } from "@/lib/useAutoRefresh"
 import { RESOURCE_LABELS } from "@/lib/resources"
 import { LogoIcon } from "@/components/Logo"
 import type { BreadcrumbItem } from "@/components/Breadcrumb"
-import type { KubeContext, Process } from "@/types"
+import type { Capabilities, KubeContext, Process } from "@/types"
 
 const enc = encodeURIComponent
 const dec = decodeURIComponent
@@ -39,7 +39,7 @@ function readLS(key: string): string | null {
 
 export default function App() {
   useServerReload()
-  const [path, navigate] = useLocation()
+  const [path, rawNavigate] = useLocation()
   const [contexts, setContexts] = useState<KubeContext[]>([])
   const [contextsLoading, setContextsLoading] = useState(true)
   const [contextsError, setContextsError] = useState<string | null>(null)
@@ -52,6 +52,8 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [switchingContext, setSwitchingContext] = useState(false)
   const [appVersion, setAppVersion] = useState<string>("")
+  const [capabilities, setCapabilities] = useState<Capabilities>({ inCluster: false, processes: false, secrets: false })
+  const [capabilitiesLoading, setCapabilitiesLoading] = useState(true)
 
   useEffect(() => {
     setErrorNotifier((msg) => {
@@ -61,7 +63,20 @@ export default function App() {
     })
   }, [])
 
-  const parts = path.split("/").filter(Boolean).map(dec)
+  // In-cluster there is exactly one context, so it is dropped from the URL:
+  // the browser sees /{namespace}/{resource}/... while the rest of the app
+  // keeps working with logical paths of /{context}/{namespace}/{resource}/...
+  const inCluster = capabilities.inCluster
+  const logicalPath = inCluster ? (path === "/" ? "/in-cluster" : `/in-cluster${path}`) : path
+  const navigate = (to: string, opts?: { replace?: boolean }) => {
+    if (inCluster) {
+      to = to.replace(/^\/in-cluster(?=\/|$)/, "")
+      if (to === "") to = "/"
+    }
+    rawNavigate(to, opts)
+  }
+
+  const parts = logicalPath.split("/").filter(Boolean).map(dec)
   const isProcessesPath = parts[0] === "_" && parts[1] === "processes"
   const processId = isProcessesPath ? parts[2] : null
 
@@ -105,18 +120,23 @@ export default function App() {
   const toDetail = (n: string) => navigate(`/${enc(context!)}/${enc(namespace!)}/${enc(resource!)}/${enc(n)}`)
 
   const refreshProcessCount = useCallback(() => {
+    if (!capabilities.processes) return
     fetchJSON<Process[]>("/api/processes")
       .then((data) => setProcessCount((data ?? []).filter(p => p.status === "running").length))
       .catch(() => {})
-  }, [])
+  }, [capabilities.processes])
 
   useEffect(() => { refreshProcessCount() }, [refreshProcessCount])
   useAutoRefresh(refreshProcessCount, 5000)
 
   useEffect(() => {
-    fetchJSON<{ version: string }>("/api/version")
-      .then((data) => setAppVersion(data?.version ?? ""))
+    fetchJSON<{ version: string; capabilities?: Capabilities }>("/api/version")
+      .then((data) => {
+        setAppVersion(data?.version ?? "")
+        if (data?.capabilities) setCapabilities(data.capabilities)
+      })
       .catch(() => {})
+      .finally(() => setCapabilitiesLoading(false))
   }, [])
 
   useEffect(() => {
@@ -141,8 +161,9 @@ export default function App() {
       .finally(() => setNamespacesLoading(false))
   }, [urlContext])
 
-  // Auto-redirect past pages that offer only a single choice
-  const redirectingToOnlyContext = path === "/" && !contextsLoading && !contextsError && contexts.length === 1
+  // Auto-redirect past pages that offer only a single choice.
+  // Skipped in-cluster: the context segment doesn't exist in the URL there.
+  const redirectingToOnlyContext = !inCluster && path === "/" && !contextsLoading && !contextsError && contexts.length === 1
   useEffect(() => {
     if (redirectingToOnlyContext) navigate(`/${enc(contexts[0].name)}`, { replace: true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,7 +185,8 @@ export default function App() {
     ...(processId ? [{ label: processId }] : []),
   ] : [
     { label: "wakuwi", onClick: () => navigate("/") },
-    ...(urlContext ? [{ label: clusterName, onClick: (urlNamespace || urlResource === "issues") ? () => navigate(`/${enc(urlContext)}`) : undefined }] : []),
+    // In-cluster there's a single fixed context — the cluster crumb is noise.
+    ...(urlContext && !inCluster ? [{ label: clusterName, onClick: (urlNamespace || urlResource === "issues") ? () => navigate(`/${enc(urlContext)}`) : undefined }] : []),
     ...(!urlNamespace && urlResource === "issues" ? [{ label: "Issues" }] : []),
     ...(urlNamespace ? [{ label: urlNamespace, onClick: urlResource ? () => navigate(`/${enc(urlContext!)}/${enc(urlNamespace)}`) : undefined }] : []),
     ...(urlResource && urlNamespace ? [{
@@ -184,7 +206,7 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, clusterName])
 
-  if (contextsLoading || redirectingToOnlyContext) {
+  if (contextsLoading || capabilitiesLoading || redirectingToOnlyContext) {
     return (
       <div className="flex h-screen items-center justify-center text-muted-foreground text-sm">
         Connecting…
@@ -200,7 +222,7 @@ export default function App() {
     )
   }
 
-  if (path === "/") {
+  if (logicalPath === "/") {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-6 bg-muted/40">
         <div className="flex flex-col items-center gap-3">
@@ -260,6 +282,8 @@ export default function App() {
         selectedContext={context}
         onContextSelect={toContext}
         processCount={processCount}
+        showProcesses={capabilities.processes}
+        showContextSelector={!inCluster}
         onSearchClick={() => context ? navigate(`/${enc(context)}`) : undefined}
         onIssuesClick={() => context ? navigate(`/${enc(context)}/_/issues`) : undefined}
         onProcessesClick={() => navigate("/_/processes")}
@@ -275,6 +299,7 @@ export default function App() {
           selectedResource={urlResource}
           onResourceSelect={toResource}
           onSearch={() => navigate(`/${enc(urlContext!)}/${enc(urlNamespace!)}`)}
+          showSecrets={capabilities.secrets}
           version={appVersion}
         />
       ) : appVersion ? (
@@ -299,9 +324,9 @@ export default function App() {
         ) : !urlNamespace && urlResource === "issues" ? (
           <Issues context={urlContext!} onNavigate={navigate} />
         ) : !urlResource && !urlNamespace ? (
-          <Search context={urlContext!} namespaces={namespaces} namespacesLoading={namespacesLoading} onNavigate={navigate} />
+          <Search context={urlContext!} namespaces={namespaces} namespacesLoading={namespacesLoading} showSecrets={capabilities.secrets} hideContextName={inCluster} onNavigate={navigate} />
         ) : !urlResource ? (
-          <Search context={urlContext!} namespace={urlNamespace!} namespaces={[]} namespacesLoading={false} onNavigate={navigate} />
+          <Search context={urlContext!} namespace={urlNamespace!} namespaces={[]} namespacesLoading={false} showSecrets={capabilities.secrets} hideContextName={inCluster} onNavigate={navigate} />
         ) : urlPodName && urlSubView === "manifest" ? (
           <ManifestView
             context={urlContext!}
@@ -319,7 +344,7 @@ export default function App() {
           />
         ) : urlPodName ? (
           urlResource === "pods"
-            ? <PodDetail context={urlContext!} namespace={urlNamespace!} name={urlPodName} onNavigate={navigate} />
+            ? <PodDetail context={urlContext!} namespace={urlNamespace!} name={urlPodName} showPortForward={capabilities.processes} onNavigate={navigate} />
             : <ResourceDetail kind={urlResource!} context={urlContext!} namespace={urlNamespace!} name={urlPodName} onNavigate={navigate} />
         ) : urlResource === "pods" ? (
           <PodList context={urlContext!} namespace={urlNamespace!} onPodSelect={toDetail} />

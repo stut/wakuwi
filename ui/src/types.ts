@@ -1,3 +1,9 @@
+export interface Capabilities {
+  inCluster: boolean
+  processes: boolean
+  secrets: boolean
+}
+
 export interface KubeContext {
   name: string
   cluster: string

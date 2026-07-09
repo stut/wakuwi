@@ -16,6 +16,18 @@ type Context struct {
 }
 
 func Contexts() ([]Context, error) {
+	// In-cluster there is no kubeconfig: synthesise a single context backed
+	// by the pod's service account so the context-keyed API and UI work
+	// unchanged.
+	if InCluster() {
+		return []Context{{
+			Name:    InClusterContextName,
+			Cluster: InClusterContextName,
+			Server:  "https://kubernetes.default.svc",
+			Current: true,
+		}}, nil
+	}
+
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	raw, err := rules.Load()
 	if err != nil {

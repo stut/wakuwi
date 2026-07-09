@@ -13,6 +13,7 @@ import (
 	"time"
 
 	wakuwi "github.com/stut/wakuwi"
+	"github.com/stut/wakuwi/internal/kube"
 	"github.com/stut/wakuwi/internal/process"
 	"github.com/stut/wakuwi/internal/server"
 
@@ -23,7 +24,10 @@ var version = "dev"
 
 func main() {
 	port := flag.Int("port", 9753, "port to listen on")
+	showSecrets := flag.Bool("show-secrets", false, "expose the Secret resource kind through the UI")
 	flag.Parse()
+
+	inCluster := kube.InCluster()
 
 	addr := fmt.Sprintf(":%d", *port)
 	url := fmt.Sprintf("http://localhost:%d", *port)
@@ -42,13 +46,24 @@ func main() {
 
 	log.Printf("starting wakuwi on %s", addr)
 
-	pm, err := process.NewManager(ctx)
-	if err != nil {
-		log.Fatalf("init process manager: %v", err)
+	// Port-forward and process management make no sense inside a pod, so
+	// the process manager is only started when running against a kubeconfig.
+	var pm *process.Manager
+	if inCluster {
+		log.Printf("running in-cluster: using pod service account; port-forward and process management disabled")
+	} else {
+		var err error
+		pm, err = process.NewManager(ctx)
+		if err != nil {
+			log.Fatalf("init process manager: %v", err)
+		}
+		log.Printf("process manager initialised (log dir: %s/wakuwi)", os.TempDir())
 	}
-	log.Printf("process manager initialised (log dir: %s/wakuwi)", os.TempDir())
 
-	srv := server.New(wakuwi.StaticFiles, pm, version)
+	srv := server.New(wakuwi.StaticFiles, pm, version, server.Options{
+		InCluster:   inCluster,
+		ShowSecrets: *showSecrets,
+	})
 
 	// Bind the socket before starting the probe so the probe only
 	// succeeds when OUR server is listening, not any pre-existing process.

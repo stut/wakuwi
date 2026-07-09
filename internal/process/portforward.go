@@ -8,7 +8,8 @@ import (
 	"os"
 	"time"
 
-	"k8s.io/client-go/tools/clientcmd"
+	"github.com/stut/wakuwi/internal/kube"
+
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 )
@@ -49,12 +50,7 @@ func (m *Manager) StartPortForward(params PortForwardParams) (string, error) {
 }
 
 func runPortForward(ctx context.Context, params PortForwardParams, logFile *os.File) error {
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-	cfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		rules,
-		&clientcmd.ConfigOverrides{CurrentContext: params.Context},
-	)
-	restCfg, err := cfg.ClientConfig()
+	restCfg, err := kube.RESTConfig(params.Context)
 	if err != nil {
 		writeLog(logFile, "error: "+err.Error())
 		return err

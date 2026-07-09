@@ -11,6 +11,7 @@ interface Props {
   selectedResource: string | null
   onResourceSelect: (resource: string) => void
   onSearch: () => void
+  showSecrets: boolean
   version?: string
 }
 
@@ -24,6 +25,7 @@ export function Sidebar({
   selectedResource,
   onResourceSelect,
   onSearch,
+  showSecrets,
   version,
 }: Props) {
   return (
@@ -40,7 +42,7 @@ export function Sidebar({
           />
         </div>
         <div className="px-1">
-          <ResourceMenu selected={selectedResource} onSelect={onResourceSelect} onSearch={onSearch} />
+          <ResourceMenu selected={selectedResource} onSelect={onResourceSelect} onSearch={onSearch} showSecrets={showSecrets} />
         </div>
       </div>
       {version && (
