@@ -9,8 +9,9 @@ export function useLocation() {
     return () => window.removeEventListener("popstate", sync)
   }, [])
 
-  const navigate = (to: string) => {
-    history.pushState(null, "", to)
+  const navigate = (to: string, opts?: { replace?: boolean }) => {
+    if (opts?.replace) history.replaceState(null, "", to)
+    else history.pushState(null, "", to)
     setPath(to)
   }
 
