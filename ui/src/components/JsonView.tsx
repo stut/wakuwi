@@ -11,7 +11,7 @@ export function JsonView({ json }: Props) {
   }
 
   const highlighted = formatted.replace(
-    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
     (match) => {
       if (/^"/.test(match)) {
         if (match.endsWith(":")) {
@@ -19,10 +19,12 @@ export function JsonView({ json }: Props) {
         }
         return `<span class="text-green-700 dark:text-green-400">${match}</span>` // string - green
       }
-      if (/true|false/.test(match)) return `<span class="text-amber-700 dark:text-amber-400">${match}</span>` // boolean - amber
-      if (/null/.test(match)) return `<span class="text-red-700 dark:text-red-400">${match}</span>` // null - red
+      if (/true|false/.test(match))
+        return `<span class="text-amber-700 dark:text-amber-400">${match}</span>` // boolean - amber
+      if (/null/.test(match))
+        return `<span class="text-red-700 dark:text-red-400">${match}</span>` // null - red
       return `<span class="text-blue-700 dark:text-blue-400">${match}</span>` // number - blue
-    }
+    },
   )
 
   return (

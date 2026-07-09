@@ -13,7 +13,9 @@ export function useServerReload() {
 
     function connect() {
       es = new EventSource("/api/livereload")
-      es.onmessage = () => { alive = true }
+      es.onmessage = () => {
+        alive = true
+      }
       es.onerror = () => {
         es?.close()
         es = null
@@ -25,6 +27,8 @@ export function useServerReload() {
     }
 
     connect()
-    return () => { es?.close() }
+    return () => {
+      es?.close()
+    }
   }, [])
 }

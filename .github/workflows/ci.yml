@@ -25,6 +25,12 @@ jobs:
       - name: Install dependencies
         run: npm --prefix ui ci
 
+      - name: Check formatting
+        run: npm --prefix ui run format:check
+
+      - name: Lint
+        run: npm --prefix ui run lint
+
       - name: Build (typecheck + bundle)
         run: npm --prefix ui run build
 

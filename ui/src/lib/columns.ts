@@ -83,4 +83,3 @@ export const RESOURCE_COLUMNS: Record<string, ColDef[]> = {
     { key: "age", label: "Age" },
   ],
 }
-

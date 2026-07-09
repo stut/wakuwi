@@ -2,8 +2,16 @@ import { Monitor, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme, type Theme } from "@/lib/useTheme"
 
-const NEXT: Record<Theme, Theme> = { system: "light", light: "dark", dark: "system" }
-const LABEL: Record<Theme, string> = { system: "System theme", light: "Light theme", dark: "Dark theme" }
+const NEXT: Record<Theme, Theme> = {
+  system: "light",
+  light: "dark",
+  dark: "system",
+}
+const LABEL: Record<Theme, string> = {
+  system: "System theme",
+  light: "Light theme",
+  dark: "Dark theme",
+}
 
 export function ThemeToggle() {
   const [theme, setTheme] = useTheme()

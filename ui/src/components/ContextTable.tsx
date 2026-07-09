@@ -1,6 +1,13 @@
 import { cn } from "@/lib/utils"
 import { Badge } from "./ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table"
 import type { KubeContext } from "@/types"
 
 interface Props {
@@ -24,7 +31,10 @@ export function ContextTable({ contexts, selected, onSelect }: Props) {
         {contexts.map((ctx) => (
           <TableRow
             key={ctx.name}
-            className={cn("cursor-pointer", selected === ctx.name && "bg-accent")}
+            className={cn(
+              "cursor-pointer",
+              selected === ctx.name && "bg-accent",
+            )}
             onClick={() => onSelect(ctx.name)}
           >
             <TableCell>
@@ -35,7 +45,9 @@ export function ContextTable({ contexts, selected, onSelect }: Props) {
             </TableCell>
             <TableCell>{ctx.cluster || "—"}</TableCell>
             <TableCell>
-              <span className="font-mono text-xs text-muted-foreground">{ctx.server || "—"}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {ctx.server || "—"}
+              </span>
             </TableCell>
             <TableCell>{ctx.namespace || "—"}</TableCell>
           </TableRow>

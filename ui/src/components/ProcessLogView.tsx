@@ -30,7 +30,7 @@ export function ProcessLogView({ processId, onDismissed, onNavigate }: Props) {
   useEffect(() => {
     const es = new EventSource(`/api/processes/${processId}/logs`)
     esRef.current = es
-    es.onmessage = (e) => {
+    es.onmessage = (e: MessageEvent<string>) => {
       setLines((prev) => [...prev, e.data])
     }
     es.onerror = () => {
@@ -47,11 +47,9 @@ export function ProcessLogView({ processId, onDismissed, onNavigate }: Props) {
 
   const kill = async () => {
     await fetch(`/api/processes/${processId}`, { method: "DELETE" })
-    fetchJSON<Process[]>("/api/processes")
-      .then((data) => {
-        const p = (data ?? []).find((x) => x.id === processId)
-        setProcess(p ?? null)
-      })
+    const data = await fetchJSON<Process[]>("/api/processes")
+    const p = (data ?? []).find((x) => x.id === processId)
+    setProcess(p ?? null)
   }
 
   const dismiss = async () => {
@@ -63,20 +61,29 @@ export function ProcessLogView({ processId, onDismissed, onNavigate }: Props) {
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 pb-4 mb-4 border-b shrink-0">
         {process?.status === "running" && (
-          <Button variant="outline" size="sm" onClick={kill}>
-            <Trash2 className="mr-2 h-4 w-4" />Kill
+          <Button variant="outline" size="sm" onClick={() => void kill()}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Kill
           </Button>
         )}
         {process && (
-          <Button variant="outline" size="sm" onClick={() =>
-            onNavigate(`/${encodeURIComponent(process.context)}/${encodeURIComponent(process.namespace)}/pods/${encodeURIComponent(process.resource)}`)
-          }>
-            <ExternalLink className="mr-2 h-4 w-4" />{process.resource}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              onNavigate(
+                `/${encodeURIComponent(process.context)}/${encodeURIComponent(process.namespace)}/pods/${encodeURIComponent(process.resource)}`,
+              )
+            }
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            {process.resource}
           </Button>
         )}
         {process?.status !== "running" && (
-          <Button variant="outline" size="sm" onClick={dismiss}>
-            <X className="mr-2 h-4 w-4" />Dismiss
+          <Button variant="outline" size="sm" onClick={() => void dismiss()}>
+            <X className="mr-2 h-4 w-4" />
+            Dismiss
           </Button>
         )}
         {process && (
@@ -85,8 +92,16 @@ export function ProcessLogView({ processId, onDismissed, onNavigate }: Props) {
           </span>
         )}
         <div className="ml-auto">
-          <Button variant="outline" size="sm" onClick={() => setScrollEnabled((v) => !v)}>
-            {scrollEnabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScrollEnabled((v) => !v)}
+          >
+            {scrollEnabled ? (
+              <Pause className="h-3.5 w-3.5" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
           </Button>
         </div>
       </div>
@@ -98,7 +113,9 @@ export function ProcessLogView({ processId, onDismissed, onNavigate }: Props) {
         className="flex-1 overflow-auto bg-muted/30 rounded-md p-4 font-mono text-xs leading-relaxed"
         onScroll={(e) => {
           const el = e.currentTarget
-          setScrollEnabled(el.scrollHeight - el.scrollTop - el.clientHeight < 100)
+          setScrollEnabled(
+            el.scrollHeight - el.scrollTop - el.clientHeight < 100,
+          )
         }}
       >
         {lines.length === 0 ? (

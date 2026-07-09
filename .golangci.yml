@@ -1,6 +1,10 @@
 version: "2"
 
 linters:
+  exclusions:
+    paths:
+      # npm dependencies can ship Go source (e.g. flatted); not our code.
+      - ui/node_modules
   settings:
     errcheck:
       # Errors from these are deliberately ignored: nothing actionable can

@@ -8,7 +8,12 @@ interface Props {
   onSelect: (ns: string) => void
 }
 
-export function NamespacePicker({ namespaces, loading, error, onSelect }: Props) {
+export function NamespacePicker({
+  namespaces,
+  loading,
+  error,
+  onSelect,
+}: Props) {
   const [query, setQuery] = useState("")
 
   const filtered = query.trim()
@@ -19,7 +24,9 @@ export function NamespacePicker({ namespaces, loading, error, onSelect }: Props)
     <div className="flex flex-col items-center justify-center h-full gap-6">
       <div className="text-center">
         <h2 className="text-lg font-semibold">Select a namespace</h2>
-        <p className="text-sm text-muted-foreground mt-1">A namespace is required to list resources.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          A namespace is required to list resources.
+        </p>
       </div>
 
       {error ? (
@@ -37,7 +44,9 @@ export function NamespacePicker({ namespaces, loading, error, onSelect }: Props)
           />
           <div className="w-80 max-h-96 overflow-y-auto rounded-md border">
             {filtered.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No namespaces match.</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No namespaces match.
+              </p>
             ) : (
               filtered.map((ns) => (
                 <button

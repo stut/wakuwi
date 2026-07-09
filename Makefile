@@ -26,13 +26,18 @@ ci:
 	@failed=""; \
 	echo "==> ui build"; \
 	(npm --prefix ui install && npm --prefix ui run build) || failed="$$failed ui-build"; \
+	echo "==> ui format"; \
+	npm --prefix ui run format:check || failed="$$failed ui-format"; \
+	echo "==> ui lint"; \
+	npm --prefix ui run lint || failed="$$failed ui-lint"; \
+	pkgs=$$(go list ./... | grep -v '/ui/node_modules/'); \
 	echo "==> gofmt"; \
-	unformatted=$$(gofmt -l .); \
+	unformatted=$$(find . -name '*.go' -not -path './ui/node_modules/*' -exec gofmt -l {} +); \
 	if [ -n "$$unformatted" ]; then \
 		echo "not gofmt-formatted:"; echo "$$unformatted"; failed="$$failed gofmt"; \
 	fi; \
 	echo "==> go vet"; \
-	go vet ./... || failed="$$failed vet"; \
+	go vet $$pkgs || failed="$$failed vet"; \
 	echo "==> golangci-lint"; \
 	if command -v golangci-lint >/dev/null; then \
 		golangci-lint run ./... || failed="$$failed lint"; \
@@ -41,9 +46,9 @@ ci:
 		failed="$$failed lint"; \
 	fi; \
 	echo "==> go build"; \
-	go build ./... || failed="$$failed build"; \
+	go build $$pkgs || failed="$$failed build"; \
 	echo "==> go test"; \
-	go test ./... || failed="$$failed test"; \
+	go test $$pkgs || failed="$$failed test"; \
 	echo; \
 	if [ -n "$$failed" ]; then echo "CI FAILED:$$failed"; exit 1; fi; \
 	echo "CI passed"
