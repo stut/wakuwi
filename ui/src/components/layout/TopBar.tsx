@@ -13,12 +13,13 @@ interface Props {
   onContextSelect: (name: string) => void
   processCount: number
   showProcesses: boolean
+  showContextSelector: boolean
   onProcessesClick: () => void
   onIssuesClick: () => void
   onSearchClick: () => void
 }
 
-export function TopBar({ breadcrumb, contexts, selectedContext, onContextSelect, processCount, showProcesses, onProcessesClick, onIssuesClick, onSearchClick }: Props) {
+export function TopBar({ breadcrumb, contexts, selectedContext, onContextSelect, processCount, showProcesses, showContextSelector, onProcessesClick, onIssuesClick, onSearchClick }: Props) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4 gap-4 shadow-sm">
       <div className="flex items-center gap-3 min-w-0">
@@ -45,11 +46,13 @@ export function TopBar({ breadcrumb, contexts, selectedContext, onContextSelect,
             )}
           </Button>
         )}
-        <ContextSelector
-          contexts={contexts}
-          selected={selectedContext}
-          onSelect={onContextSelect}
-        />
+        {showContextSelector && (
+          <ContextSelector
+            contexts={contexts}
+            selected={selectedContext}
+            onSelect={onContextSelect}
+          />
+        )}
         <ThemeToggle />
       </div>
     </header>
