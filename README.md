@@ -3,7 +3,7 @@
   <h1>wakuwi</h1>
 </div>
 
-A lightweight, read-only Kubernetes UI that runs locally and serves a web interface for exploring your clusters. Uses your existing kubeconfig — no additional configuration required.
+A lightweight, read-only Kubernetes UI that runs locally and serves a web interface for exploring your clusters. Uses your existing kubeconfig — no additional configuration required. Also supports in-cluster deployment.
 
 ## Features
 
