@@ -18,11 +18,15 @@ A lightweight, read-only Kubernetes UI that runs locally and serves a web interf
 
 ## Installation
 
-### Homebrew (macOS)
+### Homebrew (macOS and Linux)
 
 ```sh
 brew install stut/tools/wakuwi
 ```
+
+### Windows
+
+Download `wakuwi-windows-amd64.exe` from the [latest release](https://github.com/stut/wakuwi/releases/latest).
 
 ### Build from source
 
