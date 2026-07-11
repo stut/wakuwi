@@ -80,6 +80,7 @@ jobs:
           CGO_ENABLED=0 GOOS=linux  GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/wakuwi-linux-arm64   ./cmd/wakuwi
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/wakuwi-darwin-amd64  ./cmd/wakuwi
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/wakuwi-darwin-arm64  ./cmd/wakuwi
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/wakuwi-windows-amd64.exe ./cmd/wakuwi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -118,7 +119,11 @@ jobs:
         run: |
           ARM64_SHA=$(shasum -a 256 dist/wakuwi-darwin-arm64 | awk '{print $1}')
           AMD64_SHA=$(shasum -a 256 dist/wakuwi-darwin-amd64 | awk '{print $1}')
+          LINUX_ARM64_SHA=$(shasum -a 256 dist/wakuwi-linux-arm64 | awk '{print $1}')
+          LINUX_AMD64_SHA=$(shasum -a 256 dist/wakuwi-linux-amd64 | awk '{print $1}')
           python3 .github/scripts/update_tap.py \
             "${{ steps.version.outputs.release }}" \
             "$ARM64_SHA" \
-            "$AMD64_SHA"
+            "$AMD64_SHA" \
+            "$LINUX_ARM64_SHA" \
+            "$LINUX_AMD64_SHA"
