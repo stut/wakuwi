@@ -4,7 +4,7 @@ import base64
 import subprocess
 import sys
 
-version, arm64_sha, amd64_sha = sys.argv[1], sys.argv[2], sys.argv[3]
+version, arm64_sha, amd64_sha, linux_arm64_sha, linux_amd64_sha = sys.argv[1:6]
 
 formula = f"""\
 class Wakuwi < Formula
@@ -24,8 +24,19 @@ class Wakuwi < Formula
     end
   end
 
+  on_linux do
+    on_arm do
+      url "https://github.com/stut/wakuwi/releases/download/v#{{version}}/wakuwi-linux-arm64"
+      sha256 "{linux_arm64_sha}"
+    end
+    on_intel do
+      url "https://github.com/stut/wakuwi/releases/download/v#{{version}}/wakuwi-linux-amd64"
+      sha256 "{linux_amd64_sha}"
+    end
+  end
+
   def install
-    bin.install Dir["wakuwi-darwin-*"].first => "wakuwi"
+    bin.install Dir["wakuwi-*"].first => "wakuwi"
   end
 
   service do
