@@ -272,9 +272,9 @@ export function Search({
                           <tr className="border-b last:border-0">
                             <td
                               colSpan={6}
-                              className="px-3 py-2 text-xs text-muted-foreground"
+                              className="px-3 py-2 text-xs text-muted-foreground text-center"
                             >
-                              + {extra} more
+                              + {extra} more {RESOURCE_LABELS[r.kind] ?? r.kind}
                             </td>
                           </tr>
                         )}
