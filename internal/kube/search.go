@@ -11,6 +11,19 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	// searchPageSize bounds how many objects are held in memory per API
+	// call; the search pages through the cluster rather than listing
+	// everything at once.
+	searchPageSize = 250
+	// maxResultsPerKind caps the results returned per kind; matches
+	// beyond the cap are only counted.
+	maxResultsPerKind = 10
+	// maxConcurrentKinds bounds how many kinds are listed at the same
+	// time so peak memory is a few pages, not one page per kind.
+	maxConcurrentKinds = 3
+)
+
 type SearchResult struct {
 	Kind      string `json:"kind"`
 	Name      string `json:"name"`
@@ -19,7 +32,13 @@ type SearchResult struct {
 	Status    string `json:"status,omitempty"`
 }
 
-func Search(ctx context.Context, contextName, query string, kinds []string) ([]SearchResult, error) {
+type SearchResponse struct {
+	Results []SearchResult `json:"results"`
+	// More counts matches per kind beyond maxResultsPerKind.
+	More map[string]int `json:"more,omitempty"`
+}
+
+func Search(ctx context.Context, contextName, query string, kinds []string) (*SearchResponse, error) {
 	c, err := kubeClient(contextName)
 	if err != nil {
 		return nil, err
@@ -28,16 +47,23 @@ func Search(ctx context.Context, contextName, query string, kinds []string) ([]S
 	q := strings.ToLower(strings.TrimSpace(query))
 
 	var mu sync.Mutex
-	var results []SearchResult
+	results := []SearchResult{}
+	more := map[string]int{}
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxConcurrentKinds)
 
 	for _, kind := range kinds {
 		wg.Add(1)
 		go func(kind string) {
 			defer wg.Done()
-			items := searchKind(ctx, c, kind, q)
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			items, extra := searchKind(ctx, c, kind, q)
 			mu.Lock()
 			results = append(results, items...)
+			if extra > 0 {
+				more[kind] = extra
+			}
 			mu.Unlock()
 		}(kind)
 	}
@@ -53,20 +79,47 @@ func Search(ctx context.Context, contextName, query string, kinds []string) ([]S
 		return results[i].Name < results[j].Name
 	})
 
-	return results, nil
+	return &SearchResponse{Results: results, More: more}, nil
 }
 
 func match(name, q string) bool {
 	return strings.Contains(strings.ToLower(name), q)
 }
 
-func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []SearchResult {
+// searchKind pages through all objects of kind, returning the first
+// maxResultsPerKind matches and a count of matches beyond that.
+func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) ([]SearchResult, int) {
+	var results []SearchResult
+	more := 0
+	opts := metav1.ListOptions{Limit: searchPageSize}
+	for {
+		matches, cont, err := searchKindPage(ctx, c, kind, q, opts)
+		if err != nil {
+			return results, more
+		}
+		for _, m := range matches {
+			if len(results) < maxResultsPerKind {
+				results = append(results, m)
+			} else {
+				more++
+			}
+		}
+		if cont == "" {
+			return results, more
+		}
+		opts.Continue = cont
+	}
+}
+
+// searchKindPage lists a single page of objects of kind across all
+// namespaces and returns the matches plus the continue token.
+func searchKindPage(ctx context.Context, c *kubernetes.Clientset, kind, q string, opts metav1.ListOptions) ([]SearchResult, string, error) {
 	var results []SearchResult
 	switch kind {
 	case "pods":
-		list, err := c.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+		list, err := c.CoreV1().Pods("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, p := range list.Items {
 			if !match(p.Name, q) {
@@ -88,11 +141,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Age: podAge(p.CreationTimestamp.Time), Status: status,
 			})
 		}
+		return results, list.Continue, nil
 
 	case "deployments":
-		list, err := c.AppsV1().Deployments("").List(ctx, metav1.ListOptions{})
+		list, err := c.AppsV1().Deployments("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, d := range list.Items {
 			if !match(d.Name, q) {
@@ -108,11 +162,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Status: fmt.Sprintf("%d/%d", d.Status.ReadyReplicas, desired),
 			})
 		}
+		return results, list.Continue, nil
 
 	case "statefulsets":
-		list, err := c.AppsV1().StatefulSets("").List(ctx, metav1.ListOptions{})
+		list, err := c.AppsV1().StatefulSets("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, s := range list.Items {
 			if !match(s.Name, q) {
@@ -128,11 +183,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Status: fmt.Sprintf("%d/%d", s.Status.ReadyReplicas, desired),
 			})
 		}
+		return results, list.Continue, nil
 
 	case "services":
-		list, err := c.CoreV1().Services("").List(ctx, metav1.ListOptions{})
+		list, err := c.CoreV1().Services("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, svc := range list.Items {
 			if !match(svc.Name, q) {
@@ -143,11 +199,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Age: podAge(svc.CreationTimestamp.Time), Status: string(svc.Spec.Type),
 			})
 		}
+		return results, list.Continue, nil
 
 	case "ingresses":
-		list, err := c.NetworkingV1().Ingresses("").List(ctx, metav1.ListOptions{})
+		list, err := c.NetworkingV1().Ingresses("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, ing := range list.Items {
 			if !match(ing.Name, q) {
@@ -158,11 +215,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Age: podAge(ing.CreationTimestamp.Time),
 			})
 		}
+		return results, list.Continue, nil
 
 	case "configmaps":
-		list, err := c.CoreV1().ConfigMaps("").List(ctx, metav1.ListOptions{})
+		list, err := c.CoreV1().ConfigMaps("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, cm := range list.Items {
 			if !match(cm.Name, q) {
@@ -173,11 +231,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Age: podAge(cm.CreationTimestamp.Time),
 			})
 		}
+		return results, list.Continue, nil
 
 	case "secrets":
-		list, err := c.CoreV1().Secrets("").List(ctx, metav1.ListOptions{})
+		list, err := c.CoreV1().Secrets("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, s := range list.Items {
 			if !match(s.Name, q) {
@@ -188,11 +247,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Age: podAge(s.CreationTimestamp.Time), Status: string(s.Type),
 			})
 		}
+		return results, list.Continue, nil
 
 	case "daemonsets":
-		list, err := c.AppsV1().DaemonSets("").List(ctx, metav1.ListOptions{})
+		list, err := c.AppsV1().DaemonSets("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, d := range list.Items {
 			if !match(d.Name, q) {
@@ -204,11 +264,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Status: fmt.Sprintf("%d/%d", d.Status.NumberReady, d.Status.DesiredNumberScheduled),
 			})
 		}
+		return results, list.Continue, nil
 
 	case "jobs":
-		list, err := c.BatchV1().Jobs("").List(ctx, metav1.ListOptions{})
+		list, err := c.BatchV1().Jobs("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, j := range list.Items {
 			if !match(j.Name, q) {
@@ -230,11 +291,12 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Age: podAge(j.CreationTimestamp.Time), Status: status,
 			})
 		}
+		return results, list.Continue, nil
 
 	case "cronjobs":
-		list, err := c.BatchV1().CronJobs("").List(ctx, metav1.ListOptions{})
+		list, err := c.BatchV1().CronJobs("").List(ctx, opts)
 		if err != nil {
-			return nil
+			return nil, "", err
 		}
 		for _, cj := range list.Items {
 			if !match(cj.Name, q) {
@@ -245,7 +307,8 @@ func searchKind(ctx context.Context, c *kubernetes.Clientset, kind, q string) []
 				Age: podAge(cj.CreationTimestamp.Time), Status: cj.Spec.Schedule,
 			})
 		}
+		return results, list.Continue, nil
 	}
 
-	return results
+	return nil, "", nil
 }

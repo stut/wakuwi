@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react"
+import { Fragment, useState, useEffect, useRef } from "react"
 import { Search as SearchIcon, Loader2, ChevronRight } from "lucide-react"
 import { fetchJSON } from "@/lib/api"
 import { RESOURCE_LABELS } from "@/lib/resources"
 import { cn } from "@/lib/utils"
-import type { SearchResult } from "@/types"
+import type { SearchResponse, SearchResult } from "@/types"
 
 const ALL_KINDS = [
   "configmaps",
@@ -19,6 +19,8 @@ const ALL_KINDS = [
 ]
 const DEFAULT_KINDS = ["cronjobs", "deployments", "pods", "services"]
 const LS_KEY = "wakuwi.searchKinds"
+const MIN_QUERY_LENGTH = 3
+const DEBOUNCE_MS = 500
 
 function loadKinds(): string[] {
   try {
@@ -56,6 +58,7 @@ export function Search({
   const [nsFilter, setNsFilter] = useState("")
   const [kinds, setKinds] = useState<string[]>(loadKinds)
   const [results, setResults] = useState<SearchResult[] | null>(null)
+  const [more, setMore] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -73,22 +76,29 @@ export function Search({
 
   const runSearch = (q: string, k: string[]) => {
     k = k.filter((kind) => availableKinds.includes(kind))
-    if (!q.trim() || k.length === 0) {
+    if (q.trim().length < MIN_QUERY_LENGTH || k.length === 0) {
       setResults(null)
+      setMore({})
       return
     }
     setLoading(true)
-    fetchJSON<SearchResult[]>(
+    fetchJSON<SearchResponse>(
       `/api/search?context=${encodeURIComponent(context)}&q=${encodeURIComponent(q)}&kinds=${k.join(",")}`,
     )
-      .then(setResults)
-      .catch(() => setResults([]))
+      .then((res) => {
+        setResults(res.results)
+        setMore(res.more ?? {})
+      })
+      .catch(() => {
+        setResults([])
+        setMore({})
+      })
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => runSearch(query, kinds), 300)
+    debounceRef.current = setTimeout(() => runSearch(query, kinds), DEBOUNCE_MS)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
@@ -196,6 +206,13 @@ export function Search({
         )}
 
         {/* results */}
+        {!loading &&
+          query.trim().length > 0 &&
+          query.trim().length < MIN_QUERY_LENGTH && (
+            <p className="text-center text-sm text-muted-foreground py-8">
+              Type at least {MIN_QUERY_LENGTH} characters to search.
+            </p>
+          )}
         {loading && (
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -224,30 +241,46 @@ export function Search({
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => (
-                    <tr
-                      key={i}
-                      className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
-                      onClick={() => navigate(r)}
-                    >
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {RESOURCE_LABELS[r.kind] ?? r.kind}
-                      </td>
-                      <td className="px-3 py-2 font-medium">{r.name}</td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {r.namespace}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {r.status || "—"}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground tabular-nums">
-                        {r.age}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </td>
-                    </tr>
-                  ))}
+                  {results.map((r, i) => {
+                    const lastOfKind =
+                      i === results.length - 1 || results[i + 1].kind !== r.kind
+                    const extra = more[r.kind] ?? 0
+                    return (
+                      <Fragment key={i}>
+                        <tr
+                          className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
+                          onClick={() => navigate(r)}
+                        >
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {RESOURCE_LABELS[r.kind] ?? r.kind}
+                          </td>
+                          <td className="px-3 py-2 font-medium">{r.name}</td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {r.namespace}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {r.status || "—"}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground tabular-nums">
+                            {r.age}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </td>
+                        </tr>
+                        {lastOfKind && extra > 0 && (
+                          <tr className="border-b last:border-0">
+                            <td
+                              colSpan={6}
+                              className="px-3 py-2 text-xs text-muted-foreground"
+                            >
+                              + {extra} more
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
