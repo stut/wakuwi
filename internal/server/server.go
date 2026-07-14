@@ -36,6 +36,9 @@ type Server struct {
 	version string
 	updates *updateChecker
 	opts    Options
+	// searchSem bounds concurrent cluster-wide searches; excess
+	// requests wait rather than multiplying peak memory.
+	searchSem chan struct{}
 }
 
 func New(files fs.FS, pm *process.Manager, version string, opts Options) *Server {
@@ -45,12 +48,13 @@ func New(files fs.FS, pm *process.Manager, version string, opts Options) *Server
 	}
 
 	s := &Server{
-		mux:     http.NewServeMux(),
-		static:  static,
-		pm:      pm,
-		version: version,
-		updates: newUpdateChecker(version),
-		opts:    opts,
+		mux:       http.NewServeMux(),
+		static:    static,
+		pm:        pm,
+		version:   version,
+		updates:   newUpdateChecker(version),
+		opts:      opts,
+		searchSem: make(chan struct{}, 2),
 	}
 	s.routes()
 	return s
@@ -356,6 +360,12 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(kinds) == 0 {
 		http.Error(w, "no permitted kinds requested", http.StatusForbidden)
+		return
+	}
+	select {
+	case s.searchSem <- struct{}{}:
+		defer func() { <-s.searchSem }()
+	case <-r.Context().Done():
 		return
 	}
 	results, err := kube.Search(r.Context(), contextName, q, kinds)

@@ -56,6 +56,12 @@ export interface SearchResult {
   status?: string
 }
 
+export interface SearchResponse {
+  results: SearchResult[]
+  // matches per kind beyond the per-kind result cap
+  more?: Record<string, number>
+}
+
 export interface ResourceSummary {
   name: string
   namespace: string
