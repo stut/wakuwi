@@ -83,7 +83,7 @@ export function Search({
     }
     setLoading(true)
     fetchJSON<SearchResponse>(
-      `/api/search?context=${encodeURIComponent(context)}&q=${encodeURIComponent(q)}&kinds=${k.join(",")}`,
+      `/api/search?context=${encodeURIComponent(context)}${namespace ? `&namespace=${encodeURIComponent(namespace)}` : ""}&q=${encodeURIComponent(q)}&kinds=${k.join(",")}`,
     )
       .then((res) => {
         setResults(res.results)
@@ -102,7 +102,7 @@ export function Search({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [query, kinds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, kinds, namespace]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const navigate = (r: SearchResult) => {
     onNavigate(

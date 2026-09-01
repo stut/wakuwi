@@ -352,6 +352,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	contextName := r.URL.Query().Get("context")
+	namespace := r.URL.Query().Get("namespace")
 	q := r.URL.Query().Get("q")
 	kindsParam := r.URL.Query().Get("kinds")
 	if contextName == "" || q == "" || kindsParam == "" {
@@ -374,7 +375,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	case <-r.Context().Done():
 		return
 	}
-	results, err := kube.Search(r.Context(), contextName, q, kinds)
+	results, err := kube.Search(r.Context(), contextName, namespace, q, kinds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
