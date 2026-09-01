@@ -54,7 +54,11 @@ export function Search({
   hideContextName,
   onNavigate,
 }: Props) {
-  const [query, setQuery] = useState("")
+  // The query lives in the querystring (?q=…) so it survives navigating to a
+  // result and coming back, and makes searches shareable.
+  const [query, setQuery] = useState(
+    () => new URLSearchParams(window.location.search).get("q") ?? "",
+  )
   const [nsFilter, setNsFilter] = useState("")
   const [kinds, setKinds] = useState<string[]>(loadKinds)
   const [results, setResults] = useState<SearchResult[] | null>(null)
@@ -98,7 +102,17 @@ export function Search({
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => runSearch(query, kinds), DEBOUNCE_MS)
+    debounceRef.current = setTimeout(() => {
+      // replaceState keeps the path and avoids one history entry per keystroke
+      history.replaceState(
+        null,
+        "",
+        query.trim()
+          ? `${window.location.pathname}?q=${encodeURIComponent(query)}`
+          : window.location.pathname,
+      )
+      runSearch(query, kinds)
+    }, DEBOUNCE_MS)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
