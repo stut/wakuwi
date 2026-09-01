@@ -1,9 +1,17 @@
-let notifier: ((msg: string) => void) | null = null
+export type ToastVariant = "error" | "info"
 
-export function setErrorNotifier(fn: (msg: string) => void) {
+let notifier: ((msg: string, variant: ToastVariant) => void) | null = null
+
+export function setErrorNotifier(
+  fn: (msg: string, variant: ToastVariant) => void,
+) {
   notifier = fn
 }
 
 export function reportError(msg: string) {
-  notifier?.(msg)
+  notifier?.(msg, "error")
+}
+
+export function reportNotice(msg: string) {
+  notifier?.(msg, "info")
 }
