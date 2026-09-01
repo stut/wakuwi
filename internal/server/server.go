@@ -15,6 +15,7 @@ import (
 
 	"github.com/stut/wakuwi/internal/kube"
 	"github.com/stut/wakuwi/internal/process"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // Options controls which features the server exposes.
@@ -232,6 +233,11 @@ func (s *Server) handlePodDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	pod, err := kube.GetPod(r.Context(), contextName, namespace, name)
 	if err != nil {
+		// 404 lets the UI tell "pod is gone" apart from a real failure.
+		if apierrors.IsNotFound(err) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

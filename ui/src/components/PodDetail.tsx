@@ -7,7 +7,8 @@ import {
   Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { fetchJSON } from "@/lib/api"
+import { fetchJSON, HTTPError } from "@/lib/api"
+import { reportNotice } from "@/lib/errorBus"
 import { useAutoRefresh } from "@/lib/useAutoRefresh"
 import { cn } from "@/lib/utils"
 import { RESOURCE_LABELS } from "@/lib/resources"
@@ -58,20 +59,42 @@ export function PodDetail({
   const [error, setError] = useState<string | null>(null)
   const [pfDialog, setPfDialog] = useState<{ port: number } | null>(null)
   const initialLoad = useRef(true)
+  // Last successful load; lets a 404 during refresh find the parent to
+  // redirect to after the pod itself is gone.
+  const podRef = useRef<PodDetailType | null>(null)
 
   const load = useCallback(() => {
     if (initialLoad.current) setLoading(true)
     setError(null)
     fetchJSON<PodDetailType>(
       `/api/pods/${encodeURIComponent(name)}?context=${encodeURIComponent(context)}&namespace=${encodeURIComponent(namespace)}`,
+      undefined,
+      { quiet404: true },
     )
       .then((data) => {
         setPod(data)
+        podRef.current = data
         initialLoad.current = false
       })
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => {
+        if (e instanceof HTTPError && e.status === 404) {
+          const owner = podRef.current?.owners?.[0]
+          if (owner) {
+            reportNotice(
+              `Pod ${name} went away — showing ${RESOURCE_LABELS[owner.kind]?.replace(/s$/, "").toLowerCase() ?? owner.kind} ${owner.name} instead.`,
+            )
+            onNavigate(
+              `/${enc(context)}/${enc(namespace)}/${enc(owner.kind)}/${enc(owner.name)}`,
+            )
+            return
+          }
+          setError(`Pod ${name} no longer exists.`)
+          return
+        }
+        setError(e.message)
+      })
       .finally(() => setLoading(false))
-  }, [context, namespace, name])
+  }, [context, namespace, name, onNavigate])
 
   useEffect(() => {
     initialLoad.current = true

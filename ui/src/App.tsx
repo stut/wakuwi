@@ -57,9 +57,9 @@ export default function App() {
   } | null>(null)
 
   useEffect(() => {
-    setErrorNotifier((msg) => {
+    setErrorNotifier((msg, variant) => {
       const id = Date.now()
-      setToasts((prev) => [...prev, { id, message: msg }])
+      setToasts((prev) => [...prev, { id, message: msg, variant }])
       setTimeout(
         () => setToasts((prev) => prev.filter((t) => t.id !== id)),
         8000,
