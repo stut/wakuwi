@@ -28,9 +28,26 @@ export function Issues({ context, onNavigate }: Props) {
   const [issues, setIssues] = useState<Issue[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [nsFilter, setNsFilter] = useState("")
-  const [kindFilter, setKindFilter] = useState("")
-  const [msgFilter, setMsgFilter] = useState("")
+  // Filters live in the querystring so a filtered view is shareable and
+  // survives navigating away and back.
+  const urlParam = (k: string) =>
+    new URLSearchParams(window.location.search).get(k) ?? ""
+  const [nsFilter, setNsFilter] = useState(() => urlParam("ns"))
+  const [kindFilter, setKindFilter] = useState(() => urlParam("kind"))
+  const [msgFilter, setMsgFilter] = useState(() => urlParam("msg"))
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (nsFilter) params.set("ns", nsFilter)
+    if (kindFilter) params.set("kind", kindFilter)
+    if (msgFilter) params.set("msg", msgFilter)
+    const qs = params.toString()
+    history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    )
+  }, [nsFilter, kindFilter, msgFilter])
 
   const load = useCallback(() => {
     setLoading(true)
