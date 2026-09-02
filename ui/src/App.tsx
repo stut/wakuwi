@@ -487,6 +487,7 @@ export default function App() {
                 `/${enc(urlContext)}/${enc(urlNamespace!)}/${enc(urlResource)}/${enc(urlPodName)}`,
               )
             }
+            onNavigate={navigate}
           />
         ) : urlPodName ? (
           urlResource === "pods" ? (

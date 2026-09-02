@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { fetchJSON, HTTPError } from "@/lib/api"
-import { reportNotice } from "@/lib/errorBus"
+import { redirectToOwner } from "@/lib/podGone"
 import { useAutoRefresh } from "@/lib/useAutoRefresh"
 import { cn } from "@/lib/utils"
 import { RESOURCE_LABELS } from "@/lib/resources"
@@ -78,17 +78,17 @@ export function PodDetail({
       })
       .catch((e: Error) => {
         if (e instanceof HTTPError && e.status === 404) {
-          const owner = podRef.current?.owners?.[0]
-          if (owner) {
-            reportNotice(
-              `Pod ${name} went away — showing ${RESOURCE_LABELS[owner.kind]?.replace(/s$/, "").toLowerCase() ?? owner.kind} ${owner.name} instead.`,
+          if (
+            !redirectToOwner(
+              podRef.current,
+              name,
+              context,
+              namespace,
+              onNavigate,
             )
-            onNavigate(
-              `/${enc(context)}/${enc(namespace)}/${enc(owner.kind)}/${enc(owner.name)}`,
-            )
-            return
+          ) {
+            setError(`Pod ${name} no longer exists.`)
           }
-          setError(`Pod ${name} no longer exists.`)
           return
         }
         setError(e.message)
