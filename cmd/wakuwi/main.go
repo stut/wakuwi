@@ -25,6 +25,7 @@ var version = "dev"
 
 func main() {
 	port := flag.Int("port", 9753, "port to listen on")
+	listen := flag.String("listen", "", "address to listen on, e.g. 0.0.0.0:9753 (overrides -port and WAKUWI_LISTEN; default 127.0.0.1:<port>)")
 	showSecrets := flag.Bool("show-secrets", false, "expose the Secret resource kind through the UI")
 	accessLog := flag.Bool("access-log", false, "log every HTTP request")
 	allowedHosts := flag.String("allowed-hosts", "", "comma-separated extra Host header values to accept besides localhost (also via WAKUWI_ALLOWED_HOSTS; flag wins)")
@@ -43,8 +44,24 @@ func main() {
 
 	inCluster := kube.InCluster()
 
-	addr := fmt.Sprintf(":%d", *port)
-	url := fmt.Sprintf("http://localhost:%d", *port)
+	// Local runs bind loopback only: wakuwi has no auth, so exposing it on
+	// the network gives anyone full access to every cluster in the
+	// kubeconfig. In-cluster binds all interfaces so the Service works.
+	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	if inCluster {
+		addr = fmt.Sprintf(":%d", *port)
+	}
+	if env := os.Getenv("WAKUWI_LISTEN"); env != "" {
+		addr = env
+	}
+	if *listen != "" {
+		addr = *listen
+	}
+	_, urlPort, err := net.SplitHostPort(addr)
+	if err != nil {
+		log.Fatalf("invalid listen address %q: %v", addr, err)
+	}
+	url := fmt.Sprintf("http://localhost:%s", urlPort)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
