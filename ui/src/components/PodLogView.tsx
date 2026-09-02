@@ -8,7 +8,9 @@ import {
   HeartPulse,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { fetchJSON } from "@/lib/api"
+import { fetchJSON, HTTPError } from "@/lib/api"
+import { redirectToOwner } from "@/lib/podGone"
+import { useAutoRefresh } from "@/lib/useAutoRefresh"
 import { cn } from "@/lib/utils"
 import type { PodDetail } from "@/types"
 
@@ -22,9 +24,16 @@ interface Props {
   namespace: string
   pod: string
   onBack: () => void
+  onNavigate: (path: string) => void
 }
 
-export function PodLogView({ context, namespace, pod, onBack }: Props) {
+export function PodLogView({
+  context,
+  namespace,
+  pod,
+  onBack,
+  onNavigate,
+}: Props) {
   const [podDetail, setPodDetail] = useState<PodDetail | null>(null)
   const [container, setContainer] = useState<string | null>(null)
   const [lines, setLines] = useState<string[]>([])
@@ -38,6 +47,9 @@ export function PodLogView({ context, namespace, pod, onBack }: Props) {
   )
   const scrollRef = useRef<HTMLDivElement>(null)
   const esRef = useRef<EventSource | null>(null)
+  // Last successful load; lets a 404 during refresh find the parent to
+  // redirect to after the pod itself is gone.
+  const podRef = useRef<PodDetail | null>(null)
 
   useEffect(() => {
     fetchJSON<PodDetail>(
@@ -45,10 +57,42 @@ export function PodLogView({ context, namespace, pod, onBack }: Props) {
     )
       .then((p) => {
         setPodDetail(p)
+        podRef.current = p
         if (p.containers.length > 0) setContainer(p.containers[0].name)
       })
       .catch((e: Error) => setError(e.message))
   }, [context, namespace, pod])
+
+  // The log stream just goes quiet when the pod is deleted, so poll the pod
+  // itself and redirect to its owner once it is gone (same behaviour as the
+  // detail view).
+  useAutoRefresh(() => {
+    fetchJSON<PodDetail>(
+      `/api/pods/${encodeURIComponent(pod)}?context=${encodeURIComponent(context)}&namespace=${encodeURIComponent(namespace)}`,
+      undefined,
+      { quiet404: true },
+    )
+      .then((p) => {
+        podRef.current = p
+      })
+      .catch((e: Error) => {
+        if (e instanceof HTTPError && e.status === 404) {
+          if (
+            !redirectToOwner(
+              podRef.current,
+              pod,
+              context,
+              namespace,
+              onNavigate,
+            )
+          ) {
+            setError(`Pod ${pod} no longer exists.`)
+          }
+        }
+        // Other refresh errors are transient; the initial load already
+        // reported real failures.
+      })
+  })
 
   useEffect(() => {
     if (!container) return
