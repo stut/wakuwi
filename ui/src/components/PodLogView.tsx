@@ -12,9 +12,10 @@ import { fetchJSON } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import type { PodDetail } from "@/types"
 
-// Matches log lines for requests to common health-check endpoint paths.
+// Matches log lines for requests to common health-check endpoint paths,
+// including gRPC health checks (grpc.health.v1.Health/Check).
 const HEALTH_CHECK_RE =
-  /\/(?:healthz?|health[-_]?checks?|livez?|liveness|readyz?|readiness|ping)\b/i
+  /\/(?:healthz?|health[-_]?checks?|livez?|liveness|readyz?|readiness|ping)\b|grpc\.health|Health\/Check/i
 
 interface Props {
   context: string
