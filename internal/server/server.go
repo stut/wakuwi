@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,7 +69,50 @@ func (s *Server) processesEnabled() bool {
 	return !s.opts.InCluster && s.pm != nil
 }
 
+// csrfOK reports whether a state-changing request is same-site. Cross-origin
+// "simple requests" (e.g. a text/plain POST) skip the CORS preflight, so any
+// web page could otherwise start port-forwards on this machine.
+func csrfOK(r *http.Request) bool {
+	// Sec-Fetch-Site is sent by all modern browsers: "none" is a direct
+	// navigation, "" a non-browser client — both fine.
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "", "same-origin", "none":
+	default:
+		return false
+	}
+	// Origin is sent on all browser POST/DELETE requests. "null" comes from
+	// sandboxed/opaque contexts and is treated as cross-site.
+	if origin := r.Header.Get("Origin"); origin != "" {
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		switch u.Hostname() {
+		case "localhost", "127.0.0.1", "::1":
+		default:
+			return false
+		}
+	}
+	// A JSON Content-Type forces a CORS preflight, which wakuwi never
+	// answers; simple-request content types are rejected.
+	if r.ContentLength != 0 {
+		mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil || mt != "application/json" {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+	default:
+		if !csrfOK(r) {
+			http.Error(w, "forbidden: cross-site request rejected", http.StatusForbidden)
+			return
+		}
+	}
 	if !s.opts.AccessLog {
 		s.mux.ServeHTTP(w, r)
 		return
