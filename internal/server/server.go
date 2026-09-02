@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"mime"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +31,9 @@ type Options struct {
 	ShowSecrets bool
 	// AccessLog logs every HTTP request (method, path, status, duration).
 	AccessLog bool
+	// AllowedHosts lists extra Host header values accepted in addition to
+	// localhost/loopback, for setups that reach wakuwi via a hostname.
+	AllowedHosts []string
 }
 
 type Server struct {
@@ -67,7 +73,76 @@ func (s *Server) processesEnabled() bool {
 	return !s.opts.InCluster && s.pm != nil
 }
 
+// hostAllowed reports whether a Host header names this machine
+// (localhost/loopback) or an explicitly allowed hostname. Rejecting other
+// hosts blocks DNS rebinding: a malicious site pointing its DNS at
+// 127.0.0.1 would otherwise get same-origin access to the whole API.
+func hostAllowed(host string, extra []string) bool {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return true
+	}
+	for _, a := range extra {
+		if strings.EqualFold(host, a) {
+			return true
+		}
+	}
+	return false
+}
+
+// csrfOK reports whether a state-changing request is same-site. Cross-origin
+// "simple requests" (e.g. a text/plain POST) skip the CORS preflight, so any
+// web page could otherwise start port-forwards on this machine.
+func csrfOK(r *http.Request) bool {
+	// Sec-Fetch-Site is sent by all modern browsers: "none" is a direct
+	// navigation, "" a non-browser client — both fine.
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "", "same-origin", "none":
+	default:
+		return false
+	}
+	// Origin is sent on all browser POST/DELETE requests. "null" comes from
+	// sandboxed/opaque contexts and is treated as cross-site.
+	if origin := r.Header.Get("Origin"); origin != "" {
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		switch u.Hostname() {
+		case "localhost", "127.0.0.1", "::1":
+		default:
+			return false
+		}
+	}
+	// A JSON Content-Type forces a CORS preflight, which wakuwi never
+	// answers; simple-request content types are rejected.
+	if r.ContentLength != 0 {
+		mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil || mt != "application/json" {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// In-cluster the service is reached via its cluster DNS name (and
+	// probed via the pod IP), so the loopback allowlist can't apply.
+	if !s.opts.InCluster && !hostAllowed(r.Host, s.opts.AllowedHosts) {
+		http.Error(w, "forbidden: unrecognised Host header", http.StatusForbidden)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+	default:
+		if !csrfOK(r) {
+			http.Error(w, "forbidden: cross-site request rejected", http.StatusForbidden)
+			return
+		}
+	}
 	if !s.opts.AccessLog {
 		s.mux.ServeHTTP(w, r)
 		return

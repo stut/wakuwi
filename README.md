@@ -39,7 +39,7 @@ make build        # builds UI then compiles the binary to ./wakuwi
 ## Run
 
 ```sh
-wakuwi                  # listens on :8080
+wakuwi                  # listens on 127.0.0.1:9753
 wakuwi --port 9090      # custom port
 ```
 
@@ -50,10 +50,24 @@ The UI is embedded in the binary — no separate assets needed at runtime.
 ### Flags
 
 ```sh
-wakuwi --port 9090        # custom port (default 9753)
-wakuwi --show-secrets     # expose the Secret resource kind (hidden by default)
-wakuwi --access-log       # log every HTTP request (off by default)
+wakuwi --port 9090                       # custom port (default 9753)
+wakuwi --listen 0.0.0.0:9753             # custom bind address (default 127.0.0.1:<port>)
+wakuwi --show-secrets                    # expose the Secret resource kind (hidden by default)
+wakuwi --access-log                      # log every HTTP request (off by default)
+wakuwi --allowed-hosts my.hostname.net   # extra Host header values to accept
 ```
+
+The bind address can also be set with the `WAKUWI_LISTEN` environment
+variable; `--listen` takes precedence. wakuwi has no authentication, so only
+widen the bind address on networks you trust. In-cluster mode binds all
+interfaces so the ClusterIP service remains reachable.
+
+Requests whose `Host` header is not `localhost`, a loopback address, or an
+entry in `--allowed-hosts` are rejected, to prevent DNS-rebinding attacks.
+The allowlist can also be set with the `WAKUWI_ALLOWED_HOSTS` environment
+variable (comma-separated); the flag takes precedence. In-cluster mode skips
+the check, since the service is reached via its cluster DNS name and probed
+via the pod IP.
 
 ## Running in a cluster
 
