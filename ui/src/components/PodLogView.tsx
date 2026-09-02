@@ -1,9 +1,21 @@
 import { useState, useEffect, useRef } from "react"
-import { Loader2, ArrowLeft, Play, Pause, WrapText } from "lucide-react"
+import {
+  Loader2,
+  ArrowLeft,
+  Play,
+  Pause,
+  WrapText,
+  HeartPulse,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { fetchJSON } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import type { PodDetail } from "@/types"
+
+// Matches log lines for requests to common health-check endpoint paths,
+// including gRPC health checks (grpc.health.v1.Health/Check).
+const HEALTH_CHECK_RE =
+  /\/(?:healthz?|health[-_]?checks?|livez?|liveness|readyz?|readiness|ping)\b|grpc\.health|Health\/Check/i
 
 interface Props {
   context: string
@@ -20,6 +32,9 @@ export function PodLogView({ context, namespace, pod, onBack }: Props) {
   const [scrollEnabled, setScrollEnabled] = useState(true)
   const [wrap, setWrap] = useState(
     () => localStorage.getItem("wakuwi.logWrap") === "1",
+  )
+  const [hideHealth, setHideHealth] = useState(
+    () => localStorage.getItem("wakuwi.logHideHealth") === "1",
   )
   const scrollRef = useRef<HTMLDivElement>(null)
   const esRef = useRef<EventSource | null>(null)
@@ -113,6 +128,21 @@ export function PodLogView({ context, namespace, pod, onBack }: Props) {
           <Button
             variant="outline"
             size="sm"
+            title="Hide health checks"
+            onClick={() =>
+              setHideHealth((v) => {
+                const n = !v
+                localStorage.setItem("wakuwi.logHideHealth", n ? "1" : "0")
+                return n
+              })
+            }
+            className={hideHealth ? "bg-accent" : ""}
+          >
+            <HeartPulse className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() =>
               setWrap((v) => {
                 const n = !v
@@ -143,7 +173,10 @@ export function PodLogView({ context, namespace, pod, onBack }: Props) {
         {lines.length === 0 ? (
           <span className="text-muted-foreground">Waiting for logs…</span>
         ) : (
-          lines.map((line, i) => <div key={i}>{line || " "}</div>)
+          (hideHealth
+            ? lines.filter((l) => !HEALTH_CHECK_RE.test(l))
+            : lines
+          ).map((line, i) => <div key={i}>{line || " "}</div>)
         )}
       </div>
     </div>

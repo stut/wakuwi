@@ -62,7 +62,9 @@ var searchCache = struct {
 	m map[string]*kindCacheEntry
 }{m: map[string]*kindCacheEntry{}}
 
-func Search(ctx context.Context, contextName, query string, kinds []string) (*SearchResponse, error) {
+// Search matches query against the reduced listing of each kind. A non-empty
+// namespace restricts results to that namespace; the cache stays cluster-wide.
+func Search(ctx context.Context, contextName, namespace, query string, kinds []string) (*SearchResponse, error) {
 	c, err := kubeClient(contextName)
 	if err != nil {
 		return nil, err
@@ -82,7 +84,7 @@ func Search(ctx context.Context, contextName, query string, kinds []string) (*Se
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			items, extra := searchKind(ctx, c, contextName, kind, q)
+			items, extra := searchKind(ctx, c, contextName, namespace, kind, q)
 			mu.Lock()
 			results = append(results, items...)
 			if extra > 0 {
@@ -112,10 +114,13 @@ func match(name, q string) bool {
 
 // searchKind filters the (cached) reduced listing of kind, returning the
 // first maxResultsPerKind matches and a count of matches beyond that.
-func searchKind(ctx context.Context, c *kubernetes.Clientset, contextName, kind, q string) ([]SearchResult, int) {
+func searchKind(ctx context.Context, c *kubernetes.Clientset, contextName, namespace, kind, q string) ([]SearchResult, int) {
 	var results []SearchResult
 	more := 0
 	for _, e := range cachedKindEntries(ctx, c, contextName, kind) {
+		if namespace != "" && e.Namespace != namespace {
+			continue
+		}
 		if !match(e.Name, q) {
 			continue
 		}
